@@ -1,0 +1,302 @@
+import { App, Modal, Setting, Notice, type TextComponent } from "obsidian";
+import { DataManager } from "../data/manager";
+import { MaestroSuggest } from "./maestro-suggest";
+import { pickFile, renderPreview } from "../utils/foto";
+import { detectarCiclo } from "../utils/ciclo";
+import { formatDate, generateId, parseDate } from "../utils/date";
+import { PromptModal } from "../utils/prompt-modal";
+import {
+    SECTORES,
+    TIPOS_PROCESO_EDUCATIVO,
+    type Maestro,
+} from "../types";
+
+export class ProcesoEducativoModal extends Modal {
+    private dataManager: DataManager;
+    private onSaved: () => void;
+    private maestros: Maestro[] = [];
+    private anioEtiqueta: string;
+    private ciclo: string;
+    private fechaStr: string;
+
+    private sector = SECTORES[0];
+    private tipo = TIPOS_PROCESO_EDUCATIVO[0];
+    private participantes: string[] = [];
+    private leccion = "";
+    private libro = "";
+    private reportado = "";
+    private fotoPath = "";
+    private _cicloText: TextComponent | null = null;
+
+    private tagsEl: HTMLElement;
+    private fotoPreviewEl: HTMLElement;
+    private leccionSetting: Setting;
+    private libroSetting: Setting;
+    private formEl: HTMLElement;
+
+    constructor(
+        app: App,
+        dataManager: DataManager,
+        onSaved: () => void
+    ) {
+        super(app);
+        this.dataManager = dataManager;
+        this.onSaved = onSaved;
+        const now = new Date();
+        const d = detectarCiclo(now);
+        this.anioEtiqueta = d.anioEtiqueta;
+        this.ciclo = d.ciclo;
+        this.fechaStr = formatDate(now);
+    }
+
+    async onOpen(): Promise<void> {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.addClass("mi-agrupacion-modal");
+        contentEl.createEl("h3", {
+            text: "Nuevo Registro - Proceso Educativo",
+        });
+
+        this.maestros = (await this.dataManager.scanMaestros()).map(
+            (m) => m.data
+        );
+        this.renderForm(contentEl);
+        this.updateConditionalFields();
+    }
+
+    private renderForm(container: HTMLElement): void {
+        this.formEl = container.createDiv({ cls: "mi-agrupacion-form" });
+
+        new Setting(this.formEl).setName("Fecha").addText((t) =>
+            t.setValue(this.fechaStr).onChange((v) => {
+                this.fechaStr = v;
+                const parsed = parseDate(v);
+                if (!isNaN(parsed.getTime())) {
+                    const d = detectarCiclo(parsed);
+                    this.anioEtiqueta = d.anioEtiqueta;
+                    this.ciclo = d.ciclo;
+                    if (this._cicloText) {
+                        this._cicloText.setValue(
+                            `${d.anioEtiqueta} / ${d.ciclo}`
+                        );
+                    }
+                }
+            })
+        );
+
+        new Setting(this.formEl).setName("Ciclo").addText((t) => {
+            this._cicloText = t;
+            t.setValue(
+                `${this.anioEtiqueta} / ${this.ciclo}`
+            ).setDisabled(true);
+        });
+
+        new Setting(this.formEl)
+            .setName("Sector")
+            .addDropdown((d) => {
+                SECTORES.forEach((s) => d.addOption(s, s));
+                d.setValue(this.sector).onChange((v) => (this.sector = v));
+            });
+
+        new Setting(this.formEl)
+            .setName("Tipo")
+            .addDropdown((d) => {
+                TIPOS_PROCESO_EDUCATIVO.forEach((t) => d.addOption(t, t));
+                d.setValue(this.tipo).onChange((v) => {
+                    this.tipo = v;
+                    this.updateConditionalFields();
+                });
+            });
+
+        this.renderParticipantesField();
+
+        this.leccionSetting = new Setting(this.formEl)
+            .setName("Lección")
+            .addText((t) =>
+                t.setPlaceholder("Nombre o número de lección").onChange(
+                    (v) => (this.leccion = v.trim())
+                )
+            );
+
+        this.libroSetting = new Setting(this.formEl)
+            .setName("Libro")
+            .addText((t) =>
+                t.setPlaceholder("Nombre del libro").onChange(
+                    (v) => (this.libro = v.trim())
+                )
+            );
+
+        this.renderReportadoField();
+
+        this.renderFotoField();
+        this.renderButtons(container);
+    }
+
+    private renderParticipantesField(): void {
+        const setting = new Setting(this.formEl).setName("Participantes");
+        const wrapper = setting.controlEl.createDiv();
+        const row = wrapper.createDiv();
+        const input = row.createEl("input", {
+            type: "text",
+            placeholder: "Nombre del participante",
+        });
+        input.style.width = "180px";
+        const addBtn = row.createEl("button", { text: "Agregar" });
+        this.tagsEl = wrapper.createDiv();
+        this.renderChips();
+
+        const add = () => {
+            const val = input.value.trim();
+            if (!val) return;
+            this.participantes.push(val);
+            input.value = "";
+            this.renderChips();
+        };
+        addBtn.addEventListener("click", add);
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                add();
+            }
+        });
+    }
+
+    private renderChips(): void {
+        this.tagsEl.empty();
+        for (const p of this.participantes) {
+            const chip = this.tagsEl.createEl("span", {
+                cls: "mi-agrupacion-tag",
+                text: p,
+            });
+            const x = chip.createEl("span", { text: " ×" });
+            x.style.cursor = "pointer";
+            x.addEventListener("click", () => {
+                this.participantes = this.participantes.filter(
+                    (n) => n !== p
+                );
+                this.renderChips();
+            });
+        }
+    }
+
+    private renderReportadoField(): void {
+        const setting = new Setting(this.formEl).setName("Reportado por");
+        const input = setting.controlEl.createEl("input", {
+            type: "text",
+            placeholder: "Nombre",
+        });
+        input.addEventListener(
+            "input",
+            () => (this.reportado = input.value.trim())
+        );
+        new MaestroSuggest(
+            this.app,
+            input,
+            this.maestros,
+            (nombre, isNew) => {
+                this.reportado = nombre;
+                input.value = nombre;
+                if (isNew) {
+                    void (async () => {
+                        const modal = new PromptModal(
+                            this.app,
+                            `¿De qué agrupación es "${nombre}"?`,
+                            "Ej: Palavecino, Barquisimeto"
+                        );
+                        const agrupacion = await modal.prompt();
+                        if (agrupacion === null) return;
+                        this.dataManager.saveMaestro({
+                            id_maestro: generateId(),
+                            nombre_maestro: nombre,
+                            agrupacion_origen: agrupacion,
+                        });
+                        this.maestros.push({
+                            id_maestro: generateId(),
+                            nombre_maestro: nombre,
+                            agrupacion_origen: agrupacion,
+                        });
+                    })();
+                }
+            }
+        );
+    }
+
+    private renderFotoField(): void {
+        const setting = new Setting(this.formEl).setName("Foto de actividad");
+        const wrapper = setting.controlEl.createDiv();
+        this.fotoPreviewEl = wrapper.createDiv();
+        const btn = wrapper.createEl("button", { text: "Adjuntar imagen" });
+        btn.addEventListener("click", async () => {
+            const picked = await pickFile();
+            if (!picked) return;
+            this.fotoPath = await this.dataManager.saveFoto(
+                picked.arrayBuffer,
+                picked.name,
+                this.anioEtiqueta,
+                this.ciclo
+            );
+            renderPreview(
+                this.fotoPreviewEl,
+                this.fotoPath,
+                this.app.vault
+            );
+        });
+    }
+
+    private renderButtons(container: HTMLElement): void {
+        const actions = container.createDiv({
+            cls: "mi-agrupacion-form-actions",
+        });
+        const cancelBtn = actions.createEl("button", { text: "Cancelar" });
+        cancelBtn.addEventListener("click", () => this.close());
+        const saveBtn = actions.createEl("button", {
+            text: "Guardar",
+            cls: "mod-cta",
+        });
+        saveBtn.addEventListener("click", () => this.guardar());
+    }
+
+    private updateConditionalFields(): void {
+        if (!this.leccionSetting) return;
+        const isClaseNinos = this.tipo === "Clase de Niños";
+        this.leccionSetting.settingEl.style.display = isClaseNinos
+            ? ""
+            : "none";
+        this.libroSetting.settingEl.style.display = isClaseNinos
+            ? "none"
+            : "";
+    }
+
+    private async guardar(): Promise<void> {
+        if (this.participantes.length === 0) {
+            new Notice("Agregá al menos un participante");
+            return;
+        }
+
+        const frontmatter: Record<string, unknown> = {
+            id: generateId(),
+            fecha: this.fechaStr,
+            sector: this.sector,
+            ciclo: this.ciclo,
+            tipo: this.tipo,
+            participantes: this.participantes,
+            leccion: this.tipo === "Clase de Niños" ? this.leccion : "",
+            libro: this.tipo !== "Clase de Niños" ? this.libro : "",
+            reportado_por: this.reportado,
+            foto_actividad: this.fotoPath,
+        };
+
+        await this.dataManager.saveProcesoEducativo(
+            frontmatter,
+            this.anioEtiqueta,
+            this.ciclo
+        );
+        new Notice("Registro guardado correctamente");
+        this.onSaved();
+        this.close();
+    }
+
+    onClose(): void {
+        this.contentEl.empty();
+    }
+}

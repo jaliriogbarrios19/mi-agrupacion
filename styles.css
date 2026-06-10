@@ -1,0 +1,244 @@
+/* ── Mi Agrupación Plugin Styles ── */
+
+/* Modal base */
+.mi-agrupacion-modal {
+  padding: 16px;
+  min-width: 420px;
+  max-width: 560px;
+}
+
+.mi-agrupacion-modal h3 {
+  margin: 0 0 16px 0;
+  font-size: 1.15em;
+}
+
+/* Form */
+.mi-agrupacion-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mi-agrupacion-form .setting-item {
+  border-top: none;
+  padding: 6px 0;
+}
+
+.mi-agrupacion-form .setting-item-name {
+  min-width: 140px;
+}
+
+.mi-agrupacion-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Tags / Chips */
+.mi-agrupacion-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.88em;
+  margin: 4px 4px 4px 0;
+}
+
+.mi-agrupacion-tag:hover {
+  opacity: 0.9;
+}
+
+/* Suggest "create new" item */
+.mi-agrupacion-suggest-new {
+  font-style: italic;
+  color: var(--text-accent);
+}
+
+/* KPI Grid */
+.mi-agrupacion-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  padding: 16px 0;
+}
+
+.mi-agrupacion-kpi-card {
+  background: var(--background-secondary);
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.mi-agrupacion-kpi-value {
+  font-size: 1.6em;
+  font-weight: 700;
+  color: var(--text-accent);
+}
+
+.mi-agrupacion-kpi-label {
+  font-size: 0.82em;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Ciclo Selector */
+.mi-agrupacion-ciclo-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 0.92em;
+}
+
+.mi-agrupacion-ciclo-selector select {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+/* Section (SRP, Campaña) */
+.mi-agrupacion-section {
+  background: var(--background-secondary);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.mi-agrupacion-section h4 {
+  margin: 0 0 12px 0;
+  color: var(--text-accent);
+}
+
+.mi-agrupacion-stat {
+  margin: 4px 0;
+  padding: 4px 0;
+  font-size: 0.92em;
+  border-bottom: 1px solid var(--background-modifier-border-hover);
+}
+
+.mi-agrupacion-stat:last-child {
+  border-bottom: none;
+}
+
+/* Table (Sectores) */
+.mi-agrupacion-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92em;
+  margin-top: 8px;
+}
+
+.mi-agrupacion-table th,
+.mi-agrupacion-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.mi-agrupacion-table th {
+  background: var(--background-secondary);
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.mi-agrupacion-table td {
+  color: var(--text-normal);
+}
+
+.mi-agrupacion-table .mi-agrupacion-total {
+  font-weight: 700;
+  color: var(--text-accent);
+}
+
+.mi-agrupacion-table .mi-agrupacion-footer-row td {
+  font-weight: 700;
+  border-top: 2px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+}
+
+/* Dashboard */
+.mi-agrupacion-dashboard {
+  padding: 16px;
+}
+
+.mi-agrupacion-dash-header h2 {
+  margin: 0 0 12px 0;
+  font-size: 1.3em;
+  color: var(--text-accent);
+}
+
+.mi-agrupacion-dash-cita {
+  margin: 16px 0;
+}
+
+.mi-agrupacion-dash-cita blockquote {
+  border-left: 3px solid var(--text-accent);
+  padding: 8px 16px;
+  margin: 0;
+  font-style: italic;
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  border-radius: 0 6px 6px 0;
+}
+
+.mi-agrupacion-dash-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.mi-agrupacion-dash-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  cursor: pointer;
+  font-size: 0.95em;
+  transition: background 0.15s;
+}
+
+.mi-agrupacion-dash-btn:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--text-accent);
+}
+
+/* Foto Preview */
+.mi-agrupacion-foto-preview {
+  margin-top: 8px;
+  object-fit: cover;
+}
+
+/* Confirm Modal */
+.mi-agrupacion-confirm-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* View container */
+.mi-agrupacion-view {
+  padding: 16px;
+}
+
+/* Status Bar */
+.status-bar-item.plugin-mi-agrupacion {
+  cursor: pointer;
+}

@@ -1,0 +1,151 @@
+import { ItemView, WorkspaceLeaf } from "obsidian";
+import type { MiAgrupacionSettings } from "../types";
+import { VIEW_TYPE_DASHBOARD } from "../types";
+
+export class DashboardView extends ItemView {
+    private settings: MiAgrupacionSettings;
+    private openVisita: () => void;
+    private openVidaComunitaria: () => void;
+    private openProcesoEducativo: () => void;
+    private openMaestro: () => void;
+    private openGeneral: () => void;
+    private openSRP: () => void;
+    private openSectores: () => void;
+    private openCampana: () => void;
+
+    constructor(
+        leaf: WorkspaceLeaf,
+        settings: MiAgrupacionSettings,
+        callbacks: {
+            openVisita: () => void;
+            openVidaComunitaria: () => void;
+            openProcesoEducativo: () => void;
+            openMaestro: () => void;
+            openGeneral: () => void;
+            openSRP: () => void;
+            openSectores: () => void;
+            openCampana: () => void;
+        }
+    ) {
+        super(leaf);
+        this.settings = settings;
+        this.openVisita = callbacks.openVisita;
+        this.openVidaComunitaria = callbacks.openVidaComunitaria;
+        this.openProcesoEducativo = callbacks.openProcesoEducativo;
+        this.openMaestro = callbacks.openMaestro;
+        this.openGeneral = callbacks.openGeneral;
+        this.openSRP = callbacks.openSRP;
+        this.openSectores = callbacks.openSectores;
+        this.openCampana = callbacks.openCampana;
+    }
+
+    getViewType(): string {
+        return VIEW_TYPE_DASHBOARD;
+    }
+
+    getDisplayText(): string {
+        return this.settings.nombreAgrupacion;
+    }
+
+    getIcon(): string {
+        return "home";
+    }
+
+    async onOpen(): Promise<void> {
+        await this.render();
+    }
+
+    async render(): Promise<void> {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.addClass("mi-agrupacion-dashboard");
+
+        const header = contentEl.createDiv({ cls: "mi-agrupacion-dash-header" });
+        header.createEl("h2", { text: this.settings.nombreAgrupacion });
+
+        const frase = await this.getFrase();
+        if (frase) {
+            const cita = contentEl.createDiv({ cls: "mi-agrupacion-dash-cita" });
+            cita.createEl("blockquote", { text: frase });
+        }
+
+        const actions = contentEl.createDiv({
+            cls: "mi-agrupacion-dash-actions",
+        });
+
+        this.actionButton(actions, "Nueva Visita", "door-open", () =>
+            this.openVisita()
+        );
+        this.actionButton(actions, "Nueva Actividad", "calendar-check", () =>
+            this.openVidaComunitaria()
+        );
+        this.actionButton(actions, "Nuevo Proceso Educativo", "book-open", () =>
+            this.openProcesoEducativo()
+        );
+        this.actionButton(actions, "Nuevo Maestro", "user-plus", () =>
+            this.openMaestro()
+        );
+
+        const reportesLabel = contentEl.createEl("h4", {
+            text: "Reportes",
+            cls: "mi-agrupacion-section-title",
+        });
+
+        const reportes = contentEl.createDiv({
+            cls: "mi-agrupacion-dash-actions",
+        });
+
+        this.actionButton(reportes, "Vista General", "bar-chart-2", () =>
+            this.openGeneral()
+        );
+        this.actionButton(reportes, "Resumen SRP", "clipboard-list", () =>
+            this.openSRP()
+        );
+        this.actionButton(reportes, "Reporte de Sectores", "map-pin", () =>
+            this.openSectores()
+        );
+        this.actionButton(reportes, "Campaña de Enseñanza", "target", () =>
+            this.openCampana()
+        );
+    }
+
+    private actionButton(
+        container: HTMLElement,
+        text: string,
+        _icon: string,
+        onClick: () => void
+    ): void {
+        const btn = container.createEl("button", {
+            cls: "mi-agrupacion-dash-btn",
+        });
+        btn.createSpan({ text: text });
+        btn.addEventListener("click", onClick);
+    }
+
+    private async getFrase(): Promise<string> {
+        if (!this.settings.frasesPath) return "";
+        try {
+            const file = this.app.vault.getAbstractFileByPath(
+                this.settings.frasesPath
+            );
+            if (!file || !("extension" in file)) return "";
+            const content = await this.app.vault.cachedRead(file as any);
+            const lines = content
+                .split(/\r?\n/)
+                .map((l) => l.trim())
+                .filter((l) => l.length > 0 && !l.startsWith("#"));
+            if (lines.length === 0) return "";
+            return lines[Math.floor(Math.random() * lines.length)];
+        } catch {
+            return "";
+        }
+    }
+
+    updateSettings(settings: MiAgrupacionSettings): void {
+        this.settings = settings;
+    }
+
+    async onClose(): Promise<void> {
+        this.contentEl.empty();
+    }
+}

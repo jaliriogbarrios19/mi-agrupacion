@@ -1,0 +1,150 @@
+import { ItemView, WorkspaceLeaf } from "obsidian";
+import type { MiAgrupacionSettings } from "../types";
+import { VIEW_TYPE_CAMPANA, CICLOS } from "../types";
+import { DataManager } from "../data/manager";
+import { detectarCiclo } from "../utils/ciclo";
+
+interface CicloInfo {
+    anioEtiqueta: string;
+    ciclo: string;
+}
+
+export class CampanaView extends ItemView {
+    private settings: MiAgrupacionSettings;
+    private dataManager: DataManager;
+    private currentCiclo: CicloInfo;
+    private expanded = false;
+
+    constructor(
+        leaf: WorkspaceLeaf,
+        settings: MiAgrupacionSettings,
+        dataManager: DataManager
+    ) {
+        super(leaf);
+        this.settings = settings;
+        this.dataManager = dataManager;
+        this.currentCiclo = detectarCiclo(new Date());
+    }
+
+    getViewType(): string {
+        return VIEW_TYPE_CAMPANA;
+    }
+    getDisplayText(): string {
+        return "Campaña";
+    }
+    getIcon(): string {
+        return "target";
+    }
+
+    async onOpen(): Promise<void> {
+        this.render();
+    }
+
+    async render(): Promise<void> {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.addClass("mi-agrupacion-view");
+        contentEl.createEl("h3", { text: "Campaña de Enseñanza" });
+
+        this.renderCicloSelector(contentEl);
+
+        const toggleBtn = contentEl.createEl("button", {
+            text: this.expanded ? "Ocultar" : "Mostrar indicadores",
+            cls: "mod-cta",
+        });
+        toggleBtn.addEventListener("click", () => {
+            this.expanded = !this.expanded;
+            this.render();
+        });
+
+        if (!this.expanded) return;
+
+        let data;
+        try {
+            data = await this.dataManager.scanAllRecordsInCycle(
+                this.currentCiclo.anioEtiqueta,
+                this.currentCiclo.ciclo
+            );
+        } catch {
+            contentEl.createEl("p", {
+                text: "Error al cargar datos.",
+                cls: "mi-agrupacion-stat",
+            });
+            return;
+        }
+
+        const enCampana = data.visitas.filter(
+            (v) => v.data.campana_expansion === true
+        );
+
+        const visitas = data.visitas;
+        let totalPersonas = 0;
+        for (const v of visitas) {
+            const n = v.data.personas_visitadas;
+            if (typeof n === "number") totalPersonas += n;
+        }
+
+        const hogaresNuevos = enCampana.filter(
+            (v) => v.data.hogar_nuevo === true
+        ).length;
+
+        const bahais = visitas.filter(
+            (v) => v.data.condicion === "Bahá'í"
+        ).length;
+        const simpatizantes = visitas.filter(
+            (v) => v.data.condicion === "Simpatizante"
+        ).length;
+
+        const maestrosUnicos = new Set<string>();
+        for (const v of enCampana) {
+            const arr = v.data.maestros;
+            if (Array.isArray(arr))
+                for (const m of arr) if (typeof m === "string") maestrosUnicos.add(m);
+        }
+
+        const totalHogares = visitas.length;
+
+        const section = contentEl.createDiv({ cls: "mi-agrupacion-section" });
+        const stats = [
+            `Total de personas: ${totalPersonas}`,
+            `Maestros únicos involucrados: ${maestrosUnicos.size}`,
+            `Hogares nuevos contactados: ${hogaresNuevos}`,
+            `Total de Bahá'ís: ${bahais}`,
+            `Total de simpatizantes: ${simpatizantes}`,
+            `Total de hogares: ${totalHogares}`,
+        ];
+
+        for (const s of stats) {
+            section.createEl("p", { text: s, cls: "mi-agrupacion-stat" });
+        }
+    }
+
+    private renderCicloSelector(container: HTMLElement): void {
+        const row = container.createDiv({
+            cls: "mi-agrupacion-ciclo-selector",
+        });
+        row.createSpan({ text: "Ciclo: " });
+        const select = row.createEl("select");
+        for (const c of CICLOS) {
+            const opt = select.createEl("option", { text: c });
+            opt.value = c;
+            if (c === this.currentCiclo.ciclo) opt.selected = true;
+        }
+        select.addEventListener("change", () => {
+            this.currentCiclo = {
+                anioEtiqueta: this.currentCiclo.anioEtiqueta,
+                ciclo: select.value,
+            };
+            this.expanded = true;
+            this.render();
+        });
+    }
+
+    updateSettings(settings: MiAgrupacionSettings): void {
+        this.settings = settings;
+    }
+
+    async onClose(): Promise<void> {
+        this.contentEl.empty();
+    }
+}
