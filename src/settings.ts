@@ -330,7 +330,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                     .setName("Limpiar Supabase")
                     .setDesc("Borra todos los datos remotos y vuelve a subir desde cero")
                     .addButton((btn) =>
-                        btn.setButtonText("Limpiar y resubir").setWarning().onClick(() => {
+                        btn.setButtonText("Limpiar y resubir").setDestructive().onClick(() => {
                             if (this.plugin.syncManager) {
                                 void this.plugin.syncManager.clearAndResync();
                             }
