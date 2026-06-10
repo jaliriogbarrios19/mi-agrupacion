@@ -298,4 +298,25 @@ export class SyncManager {
         const pulled = await this.pullChanges();
         new Notice(`Sync: ↑${pushed} enviados, ↓${pulled} recibidos, ${skipped} errores`);
     }
+
+    async clearAndResync(): Promise<void> {
+        if (!isLoggedIn()) {
+            new Notice("Iniciá sesión primero");
+            return;
+        }
+        if (!this.vaultReady) {
+            const ok = await this.ensureVault();
+            if (!ok) { new Notice("No se pudo conectar con Supabase"); return; }
+            this.vaultReady = true;
+        }
+        this.onStatusChange("🗑️ Limpiando...");
+        try {
+            await restDelete("notes", { vault_id: `eq.${this.vaultId}` });
+        } catch {
+            new Notice("Error al limpiar Supabase");
+            return;
+        }
+        new Notice("Supabase limpio. Volviendo a subir...");
+        await this.pushNow();
+    }
 }
