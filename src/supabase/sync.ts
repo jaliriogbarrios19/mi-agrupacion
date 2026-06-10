@@ -1,4 +1,4 @@
-import { type App, normalizePath, TFile } from "obsidian";
+import { type App, normalizePath, TFile, Notice } from "obsidian";
 import { restGet, restUpsert, restDelete, isLoggedIn, getVaultSectores } from "./client";
 
 interface RemoteNote {
@@ -232,19 +232,29 @@ export class SyncManager {
     }
 
     async pushNow(): Promise<void> {
+        if (!isLoggedIn()) {
+            new Notice("Iniciá sesión primero para sincronizar");
+            return;
+        }
         if (!this.vaultReady) {
             await this.ensureVault();
             this.vaultReady = true;
         }
         this.onStatusChange("↑ Sincronizando...");
         this.pushQueue.clear();
-        // Full vault scan required: bulk sync must push all markdown files in sync folders
         const files = this.app.vault.getMarkdownFiles();
+        if (files.length === 0) {
+            new Notice("No se encontraron archivos. Si estás en mobile, esperá unos segundos y reintentá.");
+            this.onStatusChange("☁️ Conectado");
+            return;
+        }
+        let pushed = 0;
+        let skipped = 0;
         for (const file of files) {
             if (this.isExcluded(file.path)) continue;
             try {
                 const content = await this.app.vault.cachedRead(file);
-                await restUpsert(
+                const ok = await restUpsert(
                     "notes",
                     {
                         vault_id: this.vaultId,
@@ -254,10 +264,12 @@ export class SyncManager {
                     },
                     "vault_id,path"
                 );
+                if (ok) pushed++; else skipped++;
             } catch {
-                // skip
+                skipped++;
             }
         }
         await this.pullChanges();
+        new Notice(`Sync: ${pushed} enviados, ${skipped} errores, ${files.length} total`);
     }
 }

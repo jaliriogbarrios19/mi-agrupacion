@@ -291,6 +291,8 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                     btn.setButtonText("Sincronizar").onClick(() => {
                         if (this.plugin.syncManager) {
                             void this.plugin.syncManager.pushNow();
+                        } else {
+                            new Notice("El sync no está inicializado. Verificá la URL y API key.");
                         }
                     })
                 );
