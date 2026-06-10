@@ -64,8 +64,8 @@ export class MaestroSuggest extends AbstractInputSuggest<MaestroItem> {
         item: MaestroItem,
         _evt: MouseEvent | KeyboardEvent
     ): void {
-        this.selectCb(item.nombre, Boolean(item.isCreateNew));
         this.myInputEl.value = "";
+        this.selectCb(item.nombre, Boolean(item.isCreateNew));
         this.close();
     }
 }
@@ -110,8 +110,8 @@ export class SimpleMaestroSuggest extends AbstractInputSuggest<MaestroItem> {
         item: MaestroItem,
         _evt: MouseEvent | KeyboardEvent
     ): void {
-        this.selectCb(item.nombre);
         this.myInputEl.value = "";
+        this.selectCb(item.nombre);
         this.close();
     }
 }

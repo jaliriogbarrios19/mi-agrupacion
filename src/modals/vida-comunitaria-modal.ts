@@ -258,6 +258,7 @@ export class VidaComunitariaModal extends Modal {
             this.fotoPath = await this.dataManager.saveFoto(
                 picked.arrayBuffer,
                 picked.name,
+                this.sector,
                 this.anioEtiqueta,
                 this.ciclo
             );

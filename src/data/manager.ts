@@ -49,15 +49,15 @@ export class DataManager {
         return normalizePath(`${this.basePath()}/Maestros`);
     }
 
-    recordsPath(anioEtiqueta: string, ciclo: string, entidad: string): string {
+    recordsPath(sector: string, anioEtiqueta: string, ciclo: string, entidad: string): string {
         return normalizePath(
-            `${this.basePath()}/${anioEtiqueta}/${ciclo}/${entidad}`
+            `${this.basePath()}/${sector}/${anioEtiqueta}/${ciclo}/${entidad}`
         );
     }
 
-    fotosPath(anioEtiqueta: string, ciclo: string): string {
+    fotosPath(sector: string, anioEtiqueta: string, ciclo: string): string {
         return normalizePath(
-            `${this.basePath()}/${anioEtiqueta}/${ciclo}/Fotos`
+            `${this.basePath()}/${sector}/${anioEtiqueta}/${ciclo}/Fotos`
         );
     }
 
@@ -187,10 +187,11 @@ export class DataManager {
     async saveFoto(
         arrayBuffer: ArrayBuffer,
         originalName: string,
+        sector: string,
         anioEtiqueta: string,
         ciclo: string
     ): Promise<string> {
-        const folder = this.fotosPath(anioEtiqueta, ciclo);
+        const folder = this.fotosPath(sector, anioEtiqueta, ciclo);
         await this.ensureFolder(folder);
 
         const ts = new Date()
@@ -257,7 +258,8 @@ export class DataManager {
     ): Promise<TFile> {
         const body = visitaTemplate(frontmatter as unknown as Visita);
         const filename = this.buildVisitaFilename(frontmatter);
-        const folder = this.recordsPath(anioEtiqueta, ciclo, "Visitas");
+        const sector = String(frontmatter.sector || "General");
+        const folder = this.recordsPath(sector, anioEtiqueta, ciclo, "Visitas");
         return this.saveRecord(frontmatter, body, folder, filename);
     }
 
@@ -268,11 +270,8 @@ export class DataManager {
     ): Promise<TFile> {
         const body = vidaComunitariaTemplate(frontmatter as unknown as VidaComunitaria);
         const filename = this.buildVidaComunitariaFilename(frontmatter);
-        const folder = this.recordsPath(
-            anioEtiqueta,
-            ciclo,
-            "VidaComunitaria"
-        );
+        const sector = String(frontmatter.sector || "General");
+        const folder = this.recordsPath(sector, anioEtiqueta, ciclo, "VidaComunitaria");
         return this.saveRecord(frontmatter, body, folder, filename);
     }
 
@@ -283,11 +282,8 @@ export class DataManager {
     ): Promise<TFile> {
         const body = procesoEducativoTemplate(frontmatter as unknown as ProcesoEducativo);
         const filename = this.buildProcesoEducativoFilename(frontmatter);
-        const folder = this.recordsPath(
-            anioEtiqueta,
-            ciclo,
-            "ProcesoEducativo"
-        );
+        const sector = String(frontmatter.sector || "General");
+        const folder = this.recordsPath(sector, anioEtiqueta, ciclo, "ProcesoEducativo");
         return this.saveRecord(frontmatter, body, folder, filename);
     }
 
@@ -314,33 +310,23 @@ export class DataManager {
         vidaComunitaria: ScanResult<VidaComunitaria>[];
         procesoEducativo: ScanResult<ProcesoEducativo>[];
     }> {
-        const visitasPath = this.recordsPath(
-            anioEtiqueta,
-            ciclo,
-            "Visitas"
-        );
-        const vidaPath = this.recordsPath(
-            anioEtiqueta,
-            ciclo,
-            "VidaComunitaria"
-        );
-        const procesoPath = this.recordsPath(
-            anioEtiqueta,
-            ciclo,
-            "ProcesoEducativo"
-        );
+        const sectores = this.getSectores().length > 0 ? this.getSectores() : ["General"];
+        const allV: ScanResult<Visita>[] = [];
+        const allVC: ScanResult<VidaComunitaria>[] = [];
+        const allPE: ScanResult<ProcesoEducativo>[] = [];
 
-        const [visitas, vidaComunitaria, procesoEducativo] =
-            await Promise.all([
-                this.scanRecords(visitasPath),
-                this.scanRecords(vidaPath),
-                this.scanRecords(procesoPath),
-            ]);
+        for (const sector of sectores) {
+            const [visitas, vidaComunitaria, procesoEducativo] =
+                await Promise.all([
+                    this.scanRecords(this.recordsPath(sector, anioEtiqueta, ciclo, "Visitas")),
+                    this.scanRecords(this.recordsPath(sector, anioEtiqueta, ciclo, "VidaComunitaria")),
+                    this.scanRecords(this.recordsPath(sector, anioEtiqueta, ciclo, "ProcesoEducativo")),
+                ]);
+            allV.push(...visitas.map(r => ({ file: r.file, data: r.data as unknown as Visita })));
+            allVC.push(...vidaComunitaria.map(r => ({ file: r.file, data: r.data as unknown as VidaComunitaria })));
+            allPE.push(...procesoEducativo.map(r => ({ file: r.file, data: r.data as unknown as ProcesoEducativo })));
+        }
 
-        return {
-            visitas: visitas.map(r => ({ file: r.file, data: r.data as unknown as Visita })),
-            vidaComunitaria: vidaComunitaria.map(r => ({ file: r.file, data: r.data as unknown as VidaComunitaria })),
-            procesoEducativo: procesoEducativo.map(r => ({ file: r.file, data: r.data as unknown as ProcesoEducativo })),
-        };
+        return { visitas: allV, vidaComunitaria: allVC, procesoEducativo: allPE };
     }
 }
