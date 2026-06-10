@@ -107,6 +107,17 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
         renderChips();
 
         new Setting(containerEl)
+            .setName("Migrar registros existentes")
+            .setDesc("Mueve los registros sin carpeta de sector a Registros/{sector}/...")
+            .addButton((btn) =>
+                btn.setButtonText("Migrar").onClick(() => { void (async () => {
+                    const count = await this.plugin.dataManager.migrateToSectors();
+                    new Notice(`${count} registros migrados a carpetas de sector`);
+                    this.plugin.refreshAllViews();
+                })(); })
+            );
+
+        new Setting(containerEl)
             .setName("Carpeta base")
             .setDesc("Carpeta raíz donde se guardan los registros")
             .addText((text) =>

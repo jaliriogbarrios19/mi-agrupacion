@@ -300,6 +300,37 @@ export class DataManager {
         );
     }
 
+    async migrateToSectors(): Promise<number> {
+        let count = 0;
+        const base = this.vault.getAbstractFileByPath(this.basePath());
+        if (!(base instanceof TFolder)) return 0;
+
+        for (const child of base.children) {
+            if (!(child instanceof TFolder)) continue;
+            if (!/^\d{4}-\d{4}$/.test(child.name)) continue;
+            const anio = child.name;
+
+            for (const ciclo of child.children) {
+                if (!(ciclo instanceof TFolder)) continue;
+                for (const ent of ciclo.children) {
+                    if (!(ent instanceof TFolder) || ent.name === "Fotos") continue;
+                    for (const file of ent.children) {
+                        if (!(file instanceof TFile) || file.extension !== "md") continue;
+                        try {
+                            const data = await this.readRecord(file);
+                            const sector = String(data.sector || "General");
+                            const dest = this.recordsPath(sector, anio, ciclo.name, ent.name);
+                            await this.ensureFolder(dest);
+                            await this.vault.rename(file, normalizePath(`${dest}/${file.name}`));
+                            count++;
+                        } catch { /* skip corrupt */ }
+                    }
+                }
+            }
+        }
+        return count;
+    }
+
     // -- Cycle scanning (recursive for reports) --
 
     async scanAllRecordsInCycle(
