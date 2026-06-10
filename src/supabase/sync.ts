@@ -256,7 +256,11 @@ export class SyncManager {
         if (!this.vaultReady) {
             const ok = await this.ensureVault();
             if (!ok) {
-                new Notice("No se pudo conectar con Supabase. Revisá la URL y API key.");
+                if (!isLoggedIn()) {
+                    new Notice("Sesión expirada. Cerrá sesión y volvé a iniciar.");
+                } else {
+                    new Notice("No se pudo conectar con Supabase. Revisá la URL y API key.");
+                }
                 this.onStatusChange("⚠️ Error de conexión");
                 return;
             }
