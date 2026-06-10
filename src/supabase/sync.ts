@@ -178,8 +178,8 @@ export class SyncManager {
 
     // ── Pull ──
 
-    async pullChanges(): Promise<void> {
-        if (!isLoggedIn() || !this.vaultReady) return;
+    async pullChanges(): Promise<number> {
+        if (!isLoggedIn() || !this.vaultReady) return 0;
         this.onStatusChange("↓ Recibiendo...");
 
         try {
@@ -236,12 +236,12 @@ export class SyncManager {
                 this.lastPullAt =
                     notes[notes.length - 1].updated_at;
             }
+            this.onStatusChange("☁️ Conectado");
+            return notes.length;
         } catch {
             this.onStatusChange("⚠️ Error de conexión");
-            return;
+            return 0;
         }
-
-        this.onStatusChange("☁️ Conectado");
     }
 
     async pushNow(): Promise<void> {
@@ -282,7 +282,7 @@ export class SyncManager {
                 skipped++;
             }
         }
-        await this.pullChanges();
-        new Notice(`Sync: ${pushed} enviados, ${skipped} errores, ${files.length} total`);
+        const pulled = await this.pullChanges();
+        new Notice(`Sync: ↑${pushed} enviados, ↓${pulled} recibidos, ${skipped} errores`);
     }
 }
