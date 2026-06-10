@@ -1,0 +1,1 @@
+declare var activeDocument: Document;

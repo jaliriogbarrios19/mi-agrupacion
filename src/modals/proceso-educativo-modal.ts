@@ -93,7 +93,7 @@ export class ProcesoEducativoModal extends Modal {
         new Setting(this.formEl)
             .setName("Sector")
             .addDropdown((d) => {
-                this.dataManager.getSectores().forEach((s) => d.addOption(s, s));
+                this.dataManager.getSectores().forEach((s) => { d.addOption(s, s); });
                 d.setValue(this.sector).onChange((v) => { this.sector = v; });
             });
 
@@ -256,7 +256,6 @@ export class ProcesoEducativoModal extends Modal {
     }
 
     private updateConditionalFields(): void {
-        if (!this.leccionSetting) return;
         const isClaseNinos = this.tipo === "Clase de Niños";
         this.leccionSetting.settingEl.setCssStyles({ display: isClaseNinos ? "" : "none" });
         this.libroSetting.settingEl.setCssStyles({ display: isClaseNinos ? "none" : "" });
