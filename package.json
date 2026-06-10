@@ -1,6 +1,6 @@
 {
   "name": "mi-agrupacion",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Registro de actividades comunitarias y visitas para agrupaciones Bahá'ís",
   "main": "main.js",
   "scripts": {
