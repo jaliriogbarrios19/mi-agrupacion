@@ -5,6 +5,11 @@ on:
     tags:
       - "[0-9]*.[0-9]*.[0-9]*"
       - "v[0-9]*.[0-9]*.[0-9]*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 0.1.0)"
+        required: true
 
 permissions:
   contents: write
@@ -13,12 +18,20 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "value=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Validate tag (no v prefix)
-        if: startsWith(github.ref_name, 'v')
+        if: startsWith(steps.version.outputs.value, 'v')
         run: |
           echo "ERROR: Los tags de release NO deben tener prefijo 'v'."
-          echo "Tag recibido: ${{ github.ref_name }}"
-          echo "Tag esperado:  ${{ github.ref_name }} (sin la 'v')"
+          echo "Version: ${{ steps.version.outputs.value }}"
           exit 1
 
       - name: Checkout
@@ -39,9 +52,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ github.ref_name }}" \
+          gh release create "${{ steps.version.outputs.value }}" \
             main.js \
             manifest.json \
             styles.css \
-            --title "${{ github.ref_name }}" \
+            --title "${{ steps.version.outputs.value }}" \
             --generate-notes
