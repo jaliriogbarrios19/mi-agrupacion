@@ -29,8 +29,8 @@ export class ProcesoEducativoModal extends Modal {
 
     private tagsEl: HTMLElement;
     private fotoPreviewEl: HTMLElement;
-    private leccionSetting: Setting;
-    private libroSetting: Setting;
+    private leccionSetting!: Setting;
+    private libroSetting!: Setting;
     private formEl: HTMLElement;
 
     constructor(
@@ -94,13 +94,13 @@ export class ProcesoEducativoModal extends Modal {
             .setName("Sector")
             .addDropdown((d) => {
                 this.dataManager.getSectores().forEach((s) => d.addOption(s, s));
-                d.setValue(this.sector).onChange((v) => (this.sector = v));
+                d.setValue(this.sector).onChange((v) => { this.sector = v; });
             });
 
         new Setting(this.formEl)
             .setName("Tipo")
             .addDropdown((d) => {
-                TIPOS_PROCESO_EDUCATIVO.forEach((t) => d.addOption(t, t));
+                TIPOS_PROCESO_EDUCATIVO.forEach((t) => { d.addOption(t, t); });
                 d.setValue(this.tipo).onChange((v) => {
                     this.tipo = v;
                     this.updateConditionalFields();

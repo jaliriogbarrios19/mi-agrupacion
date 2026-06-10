@@ -1,7 +1,7 @@
 import { ItemView, WorkspaceLeaf } from "obsidian";
-import type { MiAgrupacionSettings } from "../types";
+import type { MiAgrupacionSettings, Visita } from "../types";
 import { VIEW_TYPE_CAMPANA, CICLOS } from "../types";
-import { DataManager } from "../data/manager";
+import { DataManager, type ScanResult } from "../data/manager";
 import { detectarCiclo } from "../utils/ciclo";
 
 interface CicloInfo {
@@ -59,12 +59,15 @@ export class CampanaView extends ItemView {
 
         if (!this.expanded) return;
 
-        let data;
+        let data: {
+            visitas: ScanResult<Visita>[];
+        };
         try {
-            data = await this.dataManager.scanAllRecordsInCycle(
+            const allData = await this.dataManager.scanAllRecordsInCycle(
                 this.currentCiclo.anioEtiqueta,
                 this.currentCiclo.ciclo
             );
+            data = { visitas: allData.visitas };
         } catch {
             contentEl.createEl("p", {
                 text: "Error al cargar datos.",
@@ -80,8 +83,7 @@ export class CampanaView extends ItemView {
         const visitas = data.visitas;
         let totalPersonas = 0;
         for (const v of visitas) {
-            const n = v.data.personas_visitadas;
-            if (typeof n === "number") totalPersonas += n;
+            totalPersonas += v.data.personas_visitadas;
         }
 
         const hogaresNuevos = enCampana.filter(
@@ -97,9 +99,9 @@ export class CampanaView extends ItemView {
 
         const maestrosUnicos = new Set<string>();
         for (const v of enCampana) {
-            const arr = v.data.maestros;
-            if (Array.isArray(arr))
-                for (const m of arr) if (typeof m === "string") maestrosUnicos.add(m);
+            for (const m of v.data.maestros) {
+                maestrosUnicos.add(m);
+            }
         }
 
         const totalHogares = visitas.length;

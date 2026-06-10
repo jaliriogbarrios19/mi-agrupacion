@@ -13,6 +13,11 @@ import {
     maestroTemplate,
 } from "./templates";
 
+export interface ScanResult<T> {
+    file: TFile;
+    data: T;
+}
+
 export class DataManager {
     private app: App;
     private settings: MiAgrupacionSettings;
@@ -116,7 +121,7 @@ export class DataManager {
         if (fotoPath) {
             await this.deleteFoto(fotoPath);
         }
-        await this.app.vault.trash(file, true);
+        await this.app.fileManager.trashFile(file);
     }
 
     // -- Scanning --
@@ -214,7 +219,7 @@ export class DataManager {
         if (!fotoPath) return;
         const file = this.vault.getAbstractFileByPath(fotoPath);
         if (file instanceof TFile) {
-            await this.app.vault.trash(file, true);
+            await this.app.fileManager.trashFile(file);
         }
     }
 
@@ -305,15 +310,9 @@ export class DataManager {
         anioEtiqueta: string,
         ciclo: string
     ): Promise<{
-        visitas: Array<{ file: TFile; data: Record<string, unknown> }>;
-        vidaComunitaria: Array<{
-            file: TFile;
-            data: Record<string, unknown>;
-        }>;
-        procesoEducativo: Array<{
-            file: TFile;
-            data: Record<string, unknown>;
-        }>;
+        visitas: ScanResult<Visita>[];
+        vidaComunitaria: ScanResult<VidaComunitaria>[];
+        procesoEducativo: ScanResult<ProcesoEducativo>[];
     }> {
         const visitasPath = this.recordsPath(
             anioEtiqueta,
@@ -338,6 +337,10 @@ export class DataManager {
                 this.scanRecords(procesoPath),
             ]);
 
-        return { visitas, vidaComunitaria, procesoEducativo };
+        return {
+            visitas: visitas.map(r => ({ file: r.file, data: r.data as unknown as Visita })),
+            vidaComunitaria: vidaComunitaria.map(r => ({ file: r.file, data: r.data as unknown as VidaComunitaria })),
+            procesoEducativo: procesoEducativo.map(r => ({ file: r.file, data: r.data as unknown as ProcesoEducativo })),
+        };
     }
 }

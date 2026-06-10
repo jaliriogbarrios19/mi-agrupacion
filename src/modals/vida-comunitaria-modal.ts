@@ -87,14 +87,14 @@ export class VidaComunitariaModal extends Modal {
         new Setting(form)
             .setName("Sector")
             .addDropdown((d) => {
-                this.dataManager.getSectores().forEach((s) => d.addOption(s, s));
+                this.dataManager.getSectores().forEach((s) => { d.addOption(s, s); });
                 d.setValue(this.sector).onChange((v) => (this.sector = v));
             });
 
         new Setting(form)
             .setName("Tipo de actividad")
             .addDropdown((d) => {
-                TIPOS_ACTIVIDAD.forEach((t) => d.addOption(t, t));
+                TIPOS_ACTIVIDAD.forEach((t) => { d.addOption(t, t); });
                 d.setValue(this.tipoActividad).onChange(
                     (v) => (this.tipoActividad = v)
                 );

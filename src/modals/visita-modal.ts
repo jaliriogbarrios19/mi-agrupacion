@@ -107,7 +107,7 @@ export class VisitaModal extends Modal {
         new Setting(form)
             .setName("Condición")
             .addDropdown((d) => {
-                CONDICIONES.forEach((c) => d.addOption(c, c));
+                CONDICIONES.forEach((c) => { d.addOption(c, c); });
                 d.setValue(this.condicion).onChange(
                     (v) => (this.condicion = v)
                 );

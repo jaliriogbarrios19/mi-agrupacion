@@ -123,8 +123,8 @@ export class DashboardView extends ItemView {
             const file = this.app.vault.getAbstractFileByPath(
                 this.settings.frasesPath
             );
-            if (!file || !("extension" in file)) return "";
-            const content = await this.app.vault.cachedRead(file as unknown as TFile);
+            if (!(file instanceof TFile)) return "";
+            const content = await this.app.vault.cachedRead(file);
             const lines = content
                 .split(/\r?\n/)
                 .map((l) => l.trim())

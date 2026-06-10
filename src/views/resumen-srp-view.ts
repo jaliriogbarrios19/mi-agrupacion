@@ -1,7 +1,7 @@
-import { ItemView, WorkspaceLeaf, TFile } from "obsidian";
-import type { MiAgrupacionSettings } from "../types";
+import { ItemView, WorkspaceLeaf } from "obsidian";
+import type { MiAgrupacionSettings, Visita, VidaComunitaria } from "../types";
 import { VIEW_TYPE_RESUMEN_SRP, CICLOS } from "../types";
-import { DataManager } from "../data/manager";
+import { DataManager, type ScanResult } from "../data/manager";
 import { detectarCiclo } from "../utils/ciclo";
 
 interface CicloInfo {
@@ -59,12 +59,16 @@ export class ResumenSRPView extends ItemView {
 
         if (!this.expanded) return;
 
-        let data;
+        let data: {
+            visitas: ScanResult<Visita>[];
+            vidaComunitaria: ScanResult<VidaComunitaria>[];
+        };
         try {
-            data = await this.dataManager.scanAllRecordsInCycle(
+            const allData = await this.dataManager.scanAllRecordsInCycle(
                 this.currentCiclo.anioEtiqueta,
                 this.currentCiclo.ciclo
             );
+            data = { visitas: allData.visitas, vidaComunitaria: allData.vidaComunitaria };
         } catch {
             contentEl.createEl("p", {
                 text: "Error al cargar datos.",
@@ -82,19 +86,14 @@ export class ResumenSRPView extends ItemView {
 
     private renderVisitasSection(
         container: HTMLElement,
-        visitas: Array<{ file: TFile; data: Record<string, unknown> }>
+        visitas: ScanResult<Visita>[]
     ): void {
         const section = container.createDiv({ cls: "mi-agrupacion-section" });
         section.createEl("h4", { text: "Visitas" });
 
         const total = visitas.length;
         const hogares = new Set(
-            visitas.flatMap((v) => {
-                const arr = v.data.nombres_visitados;
-                return Array.isArray(arr)
-                    ? arr.filter((n): n is string => typeof n === "string")
-                    : [];
-            })
+            visitas.flatMap((v) => v.data.nombres_visitados)
         ).size;
         const simpatizantes = visitas.filter(
             (v) => v.data.condicion === "Simpatizante"
@@ -111,9 +110,9 @@ export class ResumenSRPView extends ItemView {
 
         const maestrosSet = new Set<string>();
         for (const v of visitas) {
-            const arr = v.data.maestros;
-            if (Array.isArray(arr))
-                for (const m of arr) if (typeof m === "string") maestrosSet.add(m);
+            for (const m of v.data.maestros) {
+                maestrosSet.add(m);
+            }
         }
 
         const lines = [
@@ -133,7 +132,7 @@ export class ResumenSRPView extends ItemView {
 
     private renderVidaComunitariaSection(
         container: HTMLElement,
-        vida: Array<{ file: TFile; data: Record<string, unknown> }>
+        vida: ScanResult<VidaComunitaria>[]
     ): void {
         const section = container.createDiv({ cls: "mi-agrupacion-section" });
         section.createEl("h4", { text: "Vida Comunitaria" });
@@ -151,11 +150,11 @@ export class ResumenSRPView extends ItemView {
         );
 
         const asistenciaFiestas = fiestas19.reduce(
-            (acc, v) => acc + (v.data.numero_participantes as number) || 0,
+            (acc, v) => acc + (v.data.numero_participantes || 0),
             0
         );
         const asistenciaDias = diasSagrados.reduce(
-            (acc, v) => acc + (v.data.numero_participantes as number) || 0,
+            (acc, v) => acc + (v.data.numero_participantes || 0),
             0
         );
 

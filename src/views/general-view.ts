@@ -1,7 +1,7 @@
 import { ItemView, WorkspaceLeaf } from "obsidian";
-import type { MiAgrupacionSettings } from "../types";
+import type { MiAgrupacionSettings, Visita, VidaComunitaria, ProcesoEducativo } from "../types";
 import { VIEW_TYPE_GENERAL, CICLOS } from "../types";
-import { DataManager } from "../data/manager";
+import { DataManager, type ScanResult } from "../data/manager";
 import { detectarCiclo } from "../utils/ciclo";
 
 interface CicloInfo {
@@ -50,7 +50,11 @@ export class GeneralView extends ItemView {
         this.renderCicloSelector(selectors);
         this.renderSectorSelector(selectors);
 
-        let data;
+        let data: {
+            visitas: ScanResult<Visita>[];
+            vidaComunitaria: ScanResult<VidaComunitaria>[];
+            procesoEducativo: ScanResult<ProcesoEducativo>[];
+        };
         try {
             data = await this.dataManager.scanAllRecordsInCycle(
                 this.currentCiclo.anioEtiqueta,
@@ -78,21 +82,13 @@ export class GeneralView extends ItemView {
 
         const totalVisitas = data.visitas.length;
         const hogaresVisitados = new Set(
-            data.visitas.flatMap((v) => {
-                const arr = v.data.nombres_visitados;
-                return Array.isArray(arr)
-                    ? arr.filter((n): n is string => typeof n === "string")
-                    : [];
-            })
+            data.visitas.flatMap((v) => v.data.nombres_visitados)
         ).size;
 
         const maestrosEnVisitas = new Set<string>();
         for (const v of data.visitas) {
-            const arr = v.data.maestros;
-            if (Array.isArray(arr)) {
-                for (const m of arr) {
-                    if (typeof m === "string") maestrosEnVisitas.add(m);
-                }
+            for (const m of v.data.maestros) {
+                maestrosEnVisitas.add(m);
             }
         }
 
@@ -119,7 +115,7 @@ export class GeneralView extends ItemView {
         ).length;
 
         const totalParticipantesVC = data.vidaComunitaria.reduce(
-            (acc, v) => acc + (v.data.numero_participantes as number) || 0,
+            (acc, v) => acc + (v.data.numero_participantes || 0),
             0
         );
 

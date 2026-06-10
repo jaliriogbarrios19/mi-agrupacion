@@ -26,7 +26,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
     private async saveAndSyncSectores(): Promise<void> {
         await this.plugin.saveSettings();
         if (this.settings.vaultId && this.settings.supabaseUrl) {
-            setVaultSectores(this.settings.vaultId, this.settings.sectores);
+            void setVaultSectores(this.settings.vaultId, this.settings.sectores);
         }
     }
 
@@ -91,7 +91,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
             if (!val || this.settings.sectores.includes(val)) return;
             this.settings.sectores = [...this.settings.sectores, val];
             input.value = "";
-            this.saveAndSyncSectores();
+            void this.saveAndSyncSectores();
             renderChips();
         };
 
@@ -290,7 +290,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                         .setButtonText("Iniciar sesión")
                         .setCta()
                         .onClick(() => {
-                            new LoginModal(this.app, async (email) => {
+                            new LoginModal(this.app, (email) => { void (async () => {
                                 const s = getSession();
                                 this.settings.authToken =
                                     s.token;
@@ -298,7 +298,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                                 await this.saveFn();
                                 this.plugin.startSync();
                                 this.render();
-                            }).open();
+                            })(); }).open();
                         })
                 );
         }

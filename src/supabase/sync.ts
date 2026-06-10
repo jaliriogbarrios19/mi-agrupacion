@@ -45,7 +45,7 @@ export class SyncManager {
             this.registerVaultEvents();
             if (this.syncIntervalMs > 0) {
                 this.pullInterval = window.setInterval(
-                    () => this.pullChanges(),
+                    () => { void this.pullChanges(); },
                     this.syncIntervalMs
                 );
             }
@@ -129,7 +129,7 @@ export class SyncManager {
             window.clearTimeout(this.debounceTimer);
         }
         this.debounceTimer = window.setTimeout(
-            () => this.flushQueue(),
+            () => { void this.flushQueue(); },
             1000
         );
     }
@@ -193,7 +193,7 @@ export class SyncManager {
                 );
                 if (note.deleted) {
                     if (file instanceof TFile) {
-                        await this.app.vault.trash(file, true);
+                        await this.app.fileManager.trashFile(file);
                     }
                 } else if (file instanceof TFile) {
                     const localContent =
