@@ -6,7 +6,6 @@ import { detectarCiclo } from "../utils/ciclo";
 import { formatDate, generateId, parseDate } from "../utils/date";
 import { PromptModal } from "../utils/prompt-modal";
 import {
-    SECTORES,
     TIPOS_PROCESO_EDUCATIVO,
     type Maestro,
 } from "../types";
@@ -19,7 +18,7 @@ export class ProcesoEducativoModal extends Modal {
     private ciclo: string;
     private fechaStr: string;
 
-    private sector = SECTORES[0];
+    private sector = "";
     private tipo = TIPOS_PROCESO_EDUCATIVO[0];
     private participantes: string[] = [];
     private leccion = "";
@@ -94,7 +93,7 @@ export class ProcesoEducativoModal extends Modal {
         new Setting(this.formEl)
             .setName("Sector")
             .addDropdown((d) => {
-                SECTORES.forEach((s) => d.addOption(s, s));
+                this.dataManager.getSectores().forEach((s) => d.addOption(s, s));
                 d.setValue(this.sector).onChange((v) => (this.sector = v));
             });
 

@@ -1,6 +1,6 @@
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import type { MiAgrupacionSettings } from "../types";
-import { VIEW_TYPE_SECTORES, CICLOS, SECTORES } from "../types";
+import { VIEW_TYPE_SECTORES, CICLOS } from "../types";
 import { DataManager } from "../data/manager";
 import { detectarCiclo } from "../utils/ciclo";
 
@@ -73,7 +73,9 @@ export class SectoresView extends ItemView {
         const totalesPorCiclo: number[] = CICLOS.map(() => 0);
         let granTotal = 0;
 
-        for (const sector of SECTORES) {
+        const sectores = this.dataManager.getSectores();
+
+        for (const sector of sectores) {
             const row = tbody.createEl("tr");
             row.createEl("td", { text: sector });
             let sectorTotal = 0;

@@ -242,3 +242,26 @@
 .status-bar-item.plugin-mi-agrupacion {
   cursor: pointer;
 }
+
+/* Database Setup */
+.mi-agrupacion-db-setup {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+}
+
+.mi-agrupacion-db-setup h4 {
+  margin: 0 0 8px 0;
+}
+
+.mi-agrupacion-sql-textarea {
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 12px;
+  min-height: 120px;
+  transition: border-color 0.2s;
+}

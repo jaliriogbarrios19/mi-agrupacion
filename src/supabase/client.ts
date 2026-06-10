@@ -187,3 +187,30 @@ export async function restDelete(
     const res = await api("DELETE", `/rest/v1/${table}?${query}`);
     return res.status >= 200 && res.status < 300;
 }
+
+export async function getVaultSectores(vaultId: string): Promise<string[]> {
+    try {
+        const rows = await restGet<{ sectores: string }>(
+            "vaults",
+            { id: `eq.${vaultId}`, select: "sectores" }
+        );
+        if (rows.length > 0 && rows[0].sectores) {
+            const parsed = JSON.parse(rows[0].sectores) as unknown;
+            return Array.isArray(parsed) ? (parsed as string[]) : [];
+        }
+    } catch {
+        // vault or column might not exist yet
+    }
+    return [];
+}
+
+export async function setVaultSectores(
+    vaultId: string,
+    sectores: string[]
+): Promise<void> {
+    await restUpsert(
+        "vaults",
+        { id: vaultId, sectores: JSON.stringify(sectores) },
+        "id"
+    );
+}

@@ -54,6 +54,7 @@ export interface MiAgrupacionSettings {
     nombreAgrupacion: string;
     carpetaBase: string;
     frasesPath: string;
+    sectores: string[];
     supabaseUrl: string;
     supabaseAnonKey: string;
     syncInterval: number;
@@ -66,6 +67,7 @@ export const DEFAULT_SETTINGS: MiAgrupacionSettings = {
     nombreAgrupacion: "Mi Agrupación",
     carpetaBase: "Registros",
     frasesPath: "",
+    sectores: [],
     supabaseUrl: "",
     supabaseAnonKey: "",
     syncInterval: 0,
@@ -73,14 +75,6 @@ export const DEFAULT_SETTINGS: MiAgrupacionSettings = {
     authEmail: "",
     vaultId: "",
 };
-
-export const SECTORES = [
-    "Noreste",
-    "Maximino Rojas",
-    "Villa Esperanza",
-    "Sur",
-    "Instituto",
-];
 
 export const CICLOS = [
     "NOV-ENE",

@@ -26,6 +26,10 @@ export class DataManager {
         this.settings = settings;
     }
 
+    getSectores(): string[] {
+        return this.settings.sectores;
+    }
+
     private get vault() {
         return this.app.vault;
     }

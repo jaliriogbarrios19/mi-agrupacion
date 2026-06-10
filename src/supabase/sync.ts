@@ -1,5 +1,5 @@
 import { type App, normalizePath, TFile, TFolder } from "obsidian";
-import { restGet, restUpsert, restDelete, isLoggedIn } from "./client";
+import { restGet, restUpsert, restDelete, isLoggedIn, getVaultSectores } from "./client";
 
 interface RemoteNote {
     id: string;
@@ -22,16 +22,20 @@ export class SyncManager {
     private vaultReady = false;
     private syncFolders: string[];
 
+    private onSectoresUpdate: (sectores: string[]) => void;
+
     constructor(
         app: App,
         vaultId: string,
         onStatusChange: (text: string) => void,
-        syncFolders: string[] = ["Registros"]
+        syncFolders: string[] = ["Registros"],
+        onSectoresUpdate: (sectores: string[]) => void = () => {}
     ) {
         this.app = app;
         this.vaultId = vaultId;
         this.onStatusChange = onStatusChange;
         this.syncFolders = syncFolders.map((f) => normalizePath(f));
+        this.onSectoresUpdate = onSectoresUpdate;
     }
 
     start(syncIntervalMinutes: number): void {
@@ -61,6 +65,10 @@ export class SyncManager {
                     { id: this.vaultId, name: "Mi Agrupación" },
                     "id"
                 );
+            }
+            const sectores = await getVaultSectores(this.vaultId);
+            if (sectores.length > 0) {
+                this.onSectoresUpdate(sectores);
             }
         } catch {
             // will retry on next push
@@ -162,6 +170,11 @@ export class SyncManager {
         this.onStatusChange("↓ Recibiendo...");
 
         try {
+            const sectores = await getVaultSectores(this.vaultId);
+            if (sectores.length > 0) {
+                this.onSectoresUpdate(sectores);
+            }
+
             const params: Record<string, string> = {
                 vault_id: `eq.${this.vaultId}`,
                 select: "*",

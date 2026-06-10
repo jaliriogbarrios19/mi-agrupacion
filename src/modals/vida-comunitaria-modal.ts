@@ -5,7 +5,7 @@ import { pickFile, renderPreview } from "../utils/foto";
 import { detectarCiclo } from "../utils/ciclo";
 import { formatDate, generateId, parseDate } from "../utils/date";
 import { PromptModal } from "../utils/prompt-modal";
-import { SECTORES, TIPOS_ACTIVIDAD, type Maestro } from "../types";
+import { TIPOS_ACTIVIDAD, type Maestro } from "../types";
 
 export class VidaComunitariaModal extends Modal {
     private dataManager: DataManager;
@@ -15,7 +15,7 @@ export class VidaComunitariaModal extends Modal {
     private ciclo: string;
     private fechaStr: string;
 
-    private sector = SECTORES[0];
+    private sector = "";
     private tipoActividad = TIPOS_ACTIVIDAD[0];
     private nombreEvento = "";
     private asistBahais: string[] = [];
@@ -87,7 +87,7 @@ export class VidaComunitariaModal extends Modal {
         new Setting(form)
             .setName("Sector")
             .addDropdown((d) => {
-                SECTORES.forEach((s) => d.addOption(s, s));
+                this.dataManager.getSectores().forEach((s) => d.addOption(s, s));
                 d.setValue(this.sector).onChange((v) => (this.sector = v));
             });
 

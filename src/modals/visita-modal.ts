@@ -6,7 +6,6 @@ import { detectarCiclo } from "../utils/ciclo";
 import { formatDate, generateId, parseDate } from "../utils/date";
 import { PromptModal } from "../utils/prompt-modal";
 import {
-    SECTORES,
     CONDICIONES,
     type Maestro,
 } from "../types";
@@ -26,7 +25,7 @@ export class VisitaModal extends Modal {
     private _cicloText: TextComponent | null = null;
 
     // campos
-    private sector = SECTORES[0];
+    private sector = "";
     private nombresVisitados: string[] = [];
     private condicion = CONDICIONES[0];
     private hogarNuevo = false;
@@ -97,7 +96,7 @@ export class VisitaModal extends Modal {
         new Setting(form)
             .setName("Sector")
             .addDropdown((d) => {
-                for (const s of SECTORES) d.addOption(s, s);
+                for (const s of this.dataManager.getSectores()) d.addOption(s, s);
                 d.setValue(this.sector).onChange(
                     (v: string) => (this.sector = v)
                 );

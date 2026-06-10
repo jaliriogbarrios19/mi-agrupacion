@@ -250,7 +250,13 @@ export default class MiAgrupacionPlugin extends Plugin {
             (text) => {
                 this.syncStatusBar.setText(text);
             },
-            [this.settings.carpetaBase]
+            [this.settings.carpetaBase],
+            (sectores) => {
+                if (JSON.stringify(this.settings.sectores) !== JSON.stringify(sectores)) {
+                    this.settings.sectores = sectores;
+                    void this.saveSettings();
+                }
+            }
         );
         this.syncManager.start(this.settings.syncInterval);
         this.syncStatusBar.setText("☁️ Conectado");
