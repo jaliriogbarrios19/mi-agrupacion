@@ -1,4 +1,4 @@
-import { requestUrl, type RequestUrlParam } from "obsidian";
+import { requestUrl, type RequestUrlParam, Notice } from "obsidian";
 
 let supabaseUrl = "";
 let supabaseAnonKey = "";
@@ -7,7 +7,11 @@ let userEmail = "";
 let sessionExpired = false;
 
 export function configure(url: string, anonKey: string): void {
-    supabaseUrl = url.replace(/\/$/, "");
+    const trimmed = url.replace(/\/$/, "");
+    if (!trimmed.startsWith("https://") && !trimmed.startsWith("http://")) {
+        new Notice("La URL de Supabase debe empezar con https://");
+    }
+    supabaseUrl = trimmed;
     supabaseAnonKey = anonKey;
 }
 
@@ -55,8 +59,13 @@ async function api(
     path: string,
     body?: unknown
 ): Promise<{ status: number; json: unknown }> {
+    const fullUrl = `${supabaseUrl}${path}`;
+    if (!supabaseUrl.startsWith("https://") && !supabaseUrl.startsWith("http://")) {
+        new Notice(`URL de Supabase inválida: ${supabaseUrl}\nDebe empezar con https://`);
+        throw new Error("URL de Supabase inválida");
+    }
     const params: RequestUrlParam = {
-        url: `${supabaseUrl}${path}`,
+        url: fullUrl,
         method,
         headers: authHeaders(),
     };
