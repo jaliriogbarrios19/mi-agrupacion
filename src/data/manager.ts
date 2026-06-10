@@ -40,7 +40,7 @@ export class DataManager {
         if (!(base instanceof TFolder)) return [];
         const discovered: string[] = [];
         for (const child of base.children) {
-            if (child instanceof TFolder && !/^\d{4}-\d{4}$/.test(child.name)) {
+            if (child instanceof TFolder && child.name !== "Maestros" && !/^\d{4}-\d{4}$/.test(child.name)) {
                 discovered.push(child.name);
             }
         }
