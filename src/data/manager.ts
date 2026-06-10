@@ -315,6 +315,17 @@ export class DataManager {
         const allVC: ScanResult<VidaComunitaria>[] = [];
         const allPE: ScanResult<ProcesoEducativo>[] = [];
 
+        // Legacy paths (without sector) for backward compatibility
+        const base = this.basePath();
+        const [legacyV, legacyVC, legacyPE] = await Promise.all([
+            this.scanRecords(normalizePath(`${base}/${anioEtiqueta}/${ciclo}/Visitas`)),
+            this.scanRecords(normalizePath(`${base}/${anioEtiqueta}/${ciclo}/VidaComunitaria`)),
+            this.scanRecords(normalizePath(`${base}/${anioEtiqueta}/${ciclo}/ProcesoEducativo`)),
+        ]);
+        allV.push(...legacyV.map(r => ({ file: r.file, data: r.data as unknown as Visita })));
+        allVC.push(...legacyVC.map(r => ({ file: r.file, data: r.data as unknown as VidaComunitaria })));
+        allPE.push(...legacyPE.map(r => ({ file: r.file, data: r.data as unknown as ProcesoEducativo })));
+
         for (const sector of sectores) {
             const [visitas, vidaComunitaria, procesoEducativo] =
                 await Promise.all([
