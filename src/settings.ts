@@ -2,7 +2,7 @@ import { PluginSettingTab, Setting, Notice, type App } from "obsidian";
 import type { MiAgrupacionSettings } from "./types";
 import { DEFAULT_SETTINGS } from "./types";
 import type MiAgrupacionPlugin from "./main";
-import { isLoggedIn, getSession, logout, setVaultSectores } from "./supabase/client";
+import { isLoggedIn, getSession, logout, setVaultSectores, configure } from "./supabase/client";
 import { SETUP_SQL, getSqlEditorUrl } from "./supabase/setup-sql";
 import { LoginModal } from "./supabase/login-modal";
 import { generateId } from "./utils/date";
@@ -145,6 +145,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                     .setPlaceholder("https://xxx.supabase.co")
                     .onChange(async (value) => {
                         this.settings.supabaseUrl = value.trim();
+                        configure(this.settings.supabaseUrl, this.settings.supabaseAnonKey);
                         await this.saveFn();
                     })
             );
@@ -157,6 +158,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                 text.inputEl.type = "password";
                 text.onChange(async (value) => {
                     this.settings.supabaseAnonKey = value.trim();
+                    configure(this.settings.supabaseUrl, this.settings.supabaseAnonKey);
                     await this.saveFn();
                 });
             });
