@@ -352,7 +352,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                                 this.settings.authEmail = email;
                                 await this.saveFn();
                                 this.plugin.startSync();
-                                this.render();
+                                await this.render();
                             })(); }).open();
                         })
                 );
