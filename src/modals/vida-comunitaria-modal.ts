@@ -38,6 +38,8 @@ export class VidaComunitariaModal extends Modal {
         super(app);
         this.dataManager = dataManager;
         this.onSaved = onSaved;
+        const sectores = this.dataManager.getSectores();
+        this.sector = sectores.length > 0 ? sectores[0] : "";
         const now = new Date();
         const d = detectarCiclo(now);
         this.anioEtiqueta = d.anioEtiqueta;

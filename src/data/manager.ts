@@ -270,7 +270,7 @@ export class DataManager {
     ): Promise<TFile> {
         const body = visitaTemplate(frontmatter as unknown as Visita);
         const filename = this.buildVisitaFilename(frontmatter);
-        const sector = String(frontmatter.sector || "General");
+        const sector = String(frontmatter.sector || this.getSectores()[0] || "");
         const folder = this.recordsPath(sector, anioEtiqueta, ciclo, "Visitas");
         return this.saveRecord(frontmatter, body, folder, filename);
     }
@@ -282,7 +282,7 @@ export class DataManager {
     ): Promise<TFile> {
         const body = vidaComunitariaTemplate(frontmatter as unknown as VidaComunitaria);
         const filename = this.buildVidaComunitariaFilename(frontmatter);
-        const sector = String(frontmatter.sector || "General");
+        const sector = String(frontmatter.sector || this.getSectores()[0] || "");
         const folder = this.recordsPath(sector, anioEtiqueta, ciclo, "VidaComunitaria");
         return this.saveRecord(frontmatter, body, folder, filename);
     }
@@ -294,7 +294,7 @@ export class DataManager {
     ): Promise<TFile> {
         const body = procesoEducativoTemplate(frontmatter as unknown as ProcesoEducativo);
         const filename = this.buildProcesoEducativoFilename(frontmatter);
-        const sector = String(frontmatter.sector || "General");
+        const sector = String(frontmatter.sector || this.getSectores()[0] || "");
         const folder = this.recordsPath(sector, anioEtiqueta, ciclo, "ProcesoEducativo");
         return this.saveRecord(frontmatter, body, folder, filename);
     }
@@ -337,7 +337,7 @@ export class DataManager {
                         if (!(file instanceof TFile) || file.extension !== "md") continue;
                         try {
                             const data = await this.readRecord(file);
-                            const sector = String(data.sector || "General");
+                            const sector = String(data.sector || this.getSectores()[0] || "Sin Sector");
                             const dest = this.recordsPath(sector, anio, cicloName, entName);
                             await this.ensureFolder(dest);
                             const destPath = normalizePath(`${dest}/${file.name}`);
@@ -368,7 +368,7 @@ export class DataManager {
         vidaComunitaria: ScanResult<VidaComunitaria>[];
         procesoEducativo: ScanResult<ProcesoEducativo>[];
     }> {
-        const sectores = this.getSectores().length > 0 ? this.getSectores() : ["General"];
+        const sectores = this.getSectores().length > 0 ? this.getSectores() : [];
         const allV: ScanResult<Visita>[] = [];
         const allVC: ScanResult<VidaComunitaria>[] = [];
         const allPE: ScanResult<ProcesoEducativo>[] = [];

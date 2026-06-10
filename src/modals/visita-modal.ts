@@ -45,6 +45,8 @@ export class VisitaModal extends Modal {
         super(app);
         this.dataManager = dataManager;
         this.onSaved = onSaved;
+        const sectores = this.dataManager.getSectores();
+        this.sector = sectores.length > 0 ? sectores[0] : "";
         const now = new Date();
         const detected = detectarCiclo(now);
         this.anioEtiqueta = detected.anioEtiqueta;
