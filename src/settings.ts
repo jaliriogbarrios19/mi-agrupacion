@@ -292,6 +292,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                             void logout();
                             this.settings.authToken = "";
                             this.settings.authEmail = "";
+                            this.settings.authRefreshToken = "";
                             await this.saveFn();
                             await this.render();
                         })();
@@ -347,9 +348,9 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                         .onClick(() => {
                             new LoginModal(this.app, (email) => { void (async () => {
                                 const s = getSession();
-                                this.settings.authToken =
-                                    s.token;
+                                this.settings.authToken = s.token;
                                 this.settings.authEmail = email;
+                                this.settings.authRefreshToken = s.refresh;
                                 await this.saveFn();
                                 this.plugin.startSync();
                                 await this.render();

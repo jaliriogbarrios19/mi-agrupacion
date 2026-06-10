@@ -22,7 +22,7 @@ import { VisitaModal } from "./modals/visita-modal";
 import { VidaComunitariaModal } from "./modals/vida-comunitaria-modal";
 import { ProcesoEducativoModal } from "./modals/proceso-educativo-modal";
 import { MaestroModal } from "./modals/maestro-modal";
-import { configure, setSession, isLoggedIn, isSessionExpired } from "./supabase/client";
+import { configure, setSession, isLoggedIn, isSessionExpired, setOnTokenRefresh } from "./supabase/client";
 import { SyncManager } from "./supabase/sync";
 
 export default class MiAgrupacionPlugin extends Plugin {
@@ -65,8 +65,13 @@ export default class MiAgrupacionPlugin extends Plugin {
         if (this.settings.supabaseUrl && this.settings.supabaseAnonKey) {
             configure(this.settings.supabaseUrl, this.settings.supabaseAnonKey);
             if (this.settings.authToken) {
-                setSession(this.settings.authToken, this.settings.authEmail);
+                setSession(this.settings.authToken, this.settings.authEmail, this.settings.authRefreshToken);
             }
+            setOnTokenRefresh((token, refresh) => {
+                this.settings.authToken = token;
+                this.settings.authRefreshToken = refresh;
+                void this.saveSettings();
+            });
             if (isLoggedIn()) {
                 this.startSync();
             }

@@ -3,8 +3,15 @@ import { requestUrl, type RequestUrlParam, Notice } from "obsidian";
 let supabaseUrl = "";
 let supabaseAnonKey = "";
 let accessToken = "";
+let refreshToken = "";
 let userEmail = "";
 let sessionExpired = false;
+let refreshing: Promise<boolean> | null = null;
+let onTokenRefresh: ((token: string, refresh: string) => void) | null = null;
+
+export function setOnTokenRefresh(cb: (token: string, refresh: string) => void): void {
+    onTokenRefresh = cb;
+}
 
 export function configure(url: string, anonKey: string): void {
     const trimmed = url.replace(/\/$/, "");
@@ -15,19 +22,22 @@ export function configure(url: string, anonKey: string): void {
     supabaseAnonKey = anonKey;
 }
 
-export function setSession(token: string, email: string): void {
+export function setSession(token: string, email: string, refresh: string = ""): void {
     accessToken = token;
     userEmail = email;
+    refreshToken = refresh;
 }
 
 export function clearSession(): void {
     accessToken = "";
+    refreshToken = "";
     userEmail = "";
     sessionExpired = false;
 }
 
 export function markSessionExpired(): void {
     accessToken = "";
+    refreshToken = "";
     sessionExpired = true;
 }
 
@@ -35,8 +45,8 @@ export function isSessionExpired(): boolean {
     return sessionExpired;
 }
 
-export function getSession(): { token: string; email: string } {
-    return { token: accessToken, email: userEmail };
+export function getSession(): { token: string; email: string; refresh: string } {
+    return { token: accessToken, email: userEmail, refresh: refreshToken };
 }
 
 export function isLoggedIn(): boolean {
@@ -74,9 +84,41 @@ async function api(
     }
     const res = await requestUrl(params);
     if (res.status === 401 && accessToken) {
+        const refreshed = await refreshSession();
+        if (refreshed) {
+            params.headers = authHeaders();
+            const retry = await requestUrl(params);
+            return { status: retry.status, json: retry.json };
+        }
         markSessionExpired();
     }
     return { status: res.status, json: res.json };
+}
+
+async function refreshSession(): Promise<boolean> {
+    if (!refreshToken) return false;
+    if (refreshing) return refreshing;
+    refreshing = (async () => {
+        try {
+            const res = await requestUrl({
+                url: `${supabaseUrl}/auth/v1/token?grant_type=refresh_token`,
+                method: "POST",
+                headers: { apikey: supabaseAnonKey, "Content-Type": "application/json" },
+                body: JSON.stringify({ refresh_token: refreshToken }),
+            });
+            if (res.status >= 200 && res.status < 300) {
+                const data = res.json as { access_token: string; refresh_token: string };
+                accessToken = data.access_token;
+                refreshToken = data.refresh_token;
+                if (onTokenRefresh) onTokenRefresh(data.access_token, data.refresh_token);
+                return true;
+            }
+        } catch { /* refresh failed */ }
+        return false;
+    })();
+    const result = await refreshing;
+    refreshing = null;
+    return result;
 }
 
 export async function signup(
@@ -114,9 +156,11 @@ export async function login(
         if (res.status >= 200 && res.status < 300) {
             const data = res.json as {
                 access_token: string;
+                refresh_token: string;
                 user: { email: string };
             };
             accessToken = data.access_token;
+            refreshToken = data.refresh_token;
             userEmail = data.user?.email || email;
             return { success: true };
         }

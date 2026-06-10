@@ -60,6 +60,7 @@ export interface MiAgrupacionSettings {
     syncInterval: number;
     authToken: string;
     authEmail: string;
+    authRefreshToken: string;
     vaultId: string;
 }
 
@@ -73,6 +74,7 @@ export const DEFAULT_SETTINGS: MiAgrupacionSettings = {
     syncInterval: 0,
     authToken: "",
     authEmail: "",
+    authRefreshToken: "",
     vaultId: "",
 };
 
