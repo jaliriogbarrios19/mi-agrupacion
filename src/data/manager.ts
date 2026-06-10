@@ -331,8 +331,9 @@ export class DataManager {
                 for (const ent of ciclo.children) {
                     if (!(ent instanceof TFolder) || ent.name === "Fotos") continue;
                     const entName = ent.name;
+                    const files = [...ent.children];
 
-                    for (const file of ent.children as TFile[]) {
+                    for (const file of files) {
                         if (!(file instanceof TFile) || file.extension !== "md") continue;
                         try {
                             const data = await this.readRecord(file);

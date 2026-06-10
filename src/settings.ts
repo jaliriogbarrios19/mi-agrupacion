@@ -288,14 +288,27 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                 );
 
             new Setting(containerEl)
-                .setName("Sync ahora")
-                .setDesc("Forzar sincronización manual")
+                .setName("Sync")
+                .setDesc("Subir cambios locales y descargar del servidor")
                 .addButton((btn) =>
-                    btn.setButtonText("Sincronizar").onClick(() => {
+                    btn.setButtonText("Subir y bajar").onClick(() => {
                         if (this.plugin.syncManager) {
                             void this.plugin.syncManager.pushNow();
                         } else {
                             new Notice("El sync no está inicializado. Verificá la URL y API key.");
+                        }
+                    })
+                )
+                .addButton((btn) =>
+                    btn.setButtonText("Solo descargar").onClick(() => {
+                        if (this.plugin.syncManager) {
+                            void (async () => {
+                                const pulled = await this.plugin.syncManager!.pullChanges();
+                                new Notice(`Descargados: ${pulled} registros`);
+                                this.plugin.refreshAllViews();
+                            })();
+                        } else {
+                            new Notice("El sync no está inicializado.");
                         }
                     })
                 );
