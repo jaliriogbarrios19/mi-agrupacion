@@ -103,5 +103,4 @@ export const CONDICIONES = [
 export const VIEW_TYPE_DASHBOARD = "mi-agrupacion-dashboard";
 export const VIEW_TYPE_GENERAL = "mi-agrupacion-general";
 export const VIEW_TYPE_RESUMEN_SRP = "mi-agrupacion-resumen-srp";
-export const VIEW_TYPE_SECTORES = "mi-agrupacion-sectores";
 export const VIEW_TYPE_CAMPANA = "mi-agrupacion-campana";

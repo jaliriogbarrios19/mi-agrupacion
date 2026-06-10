@@ -10,7 +10,6 @@ import {
     VIEW_TYPE_DASHBOARD,
     VIEW_TYPE_GENERAL,
     VIEW_TYPE_RESUMEN_SRP,
-    VIEW_TYPE_SECTORES,
     VIEW_TYPE_CAMPANA,
 } from "./types";
 import { DataManager } from "./data/manager";
@@ -18,7 +17,6 @@ import { MiAgrupacionSettingTab } from "./settings";
 import { DashboardView } from "./views/dashboard-view";
 import { GeneralView } from "./views/general-view";
 import { ResumenSRPView } from "./views/resumen-srp-view";
-import { SectoresView } from "./views/sectores-view";
 import { CampanaView } from "./views/campana-view";
 import { VisitaModal } from "./modals/visita-modal";
 import { VidaComunitariaModal } from "./modals/vida-comunitaria-modal";
@@ -74,7 +72,6 @@ export default class MiAgrupacionPlugin extends Plugin {
             openMaestro: () => this.openMaestroModal(),
             openGeneral: () => this.activateView(VIEW_TYPE_GENERAL),
             openSRP: () => this.activateView(VIEW_TYPE_RESUMEN_SRP),
-            openSectores: () => this.activateView(VIEW_TYPE_SECTORES),
             openCampana: () => this.activateView(VIEW_TYPE_CAMPANA),
         };
 
@@ -90,11 +87,6 @@ export default class MiAgrupacionPlugin extends Plugin {
             VIEW_TYPE_RESUMEN_SRP,
             (leaf) =>
                 new ResumenSRPView(leaf, this.settings, this.dataManager)
-        );
-        this.registerView(
-            VIEW_TYPE_SECTORES,
-            (leaf) =>
-                new SectoresView(leaf, this.settings, this.dataManager)
         );
         this.registerView(
             VIEW_TYPE_CAMPANA,
@@ -118,11 +110,6 @@ export default class MiAgrupacionPlugin extends Plugin {
             id: "open-resumen-srp",
             name: "Abrir resumen SRP",
             callback: () => this.activateView(VIEW_TYPE_RESUMEN_SRP),
-        });
-        this.addCommand({
-            id: "open-sectores",
-            name: "Abrir reporte de sectores",
-            callback: () => this.activateView(VIEW_TYPE_SECTORES),
         });
         this.addCommand({
             id: "open-campana",
@@ -218,7 +205,6 @@ export default class MiAgrupacionPlugin extends Plugin {
             VIEW_TYPE_DASHBOARD,
             VIEW_TYPE_GENERAL,
             VIEW_TYPE_RESUMEN_SRP,
-            VIEW_TYPE_SECTORES,
             VIEW_TYPE_CAMPANA,
         ];
         for (const vt of viewTypes) {

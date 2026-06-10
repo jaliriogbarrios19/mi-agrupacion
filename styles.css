@@ -105,6 +105,29 @@
   color: var(--text-normal);
 }
 
+/* Selectors row (ciclo + sector) */
+.mi-agrupacion-selectors {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  font-size: 0.92em;
+  flex-wrap: wrap;
+}
+
+.mi-agrupacion-selectors select {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+.mi-agrupacion-selectors span {
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
 /* Section (SRP, Campaña) */
 .mi-agrupacion-section {
   background: var(--background-secondary);

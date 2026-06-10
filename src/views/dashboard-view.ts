@@ -23,7 +23,6 @@ export class DashboardView extends ItemView {
             openMaestro: () => void;
             openGeneral: () => void;
             openSRP: () => void;
-            openSectores: () => void;
             openCampana: () => void;
         }
     ) {
@@ -35,7 +34,6 @@ export class DashboardView extends ItemView {
         this.openMaestro = callbacks.openMaestro;
         this.openGeneral = callbacks.openGeneral;
         this.openSRP = callbacks.openSRP;
-        this.openSectores = callbacks.openSectores;
         this.openCampana = callbacks.openCampana;
     }
 
@@ -100,9 +98,6 @@ export class DashboardView extends ItemView {
         );
         this.actionButton(reportes, "Resumen SRP", "clipboard-list", () =>
             this.openSRP()
-        );
-        this.actionButton(reportes, "Reporte de Sectores", "map-pin", () =>
-            this.openSectores()
         );
         this.actionButton(reportes, "Campaña de Enseñanza", "target", () =>
             this.openCampana()
