@@ -35,6 +35,16 @@ export default class MiAgrupacionPlugin extends Plugin {
         await this.loadSettings();
         this.dataManager = new DataManager(this.app, this.settings);
 
+        const discovered = this.dataManager.discoverSectoresFromVault();
+        if (discovered.length > 0) {
+            const merged = [...new Set([...this.settings.sectores, ...discovered])];
+            if (merged.length !== this.settings.sectores.length) {
+                this.settings.sectores = merged;
+                await this.saveSettings();
+                this.dataManager.updateSettings(this.settings);
+            }
+        }
+
         this.registerViews();
         this.registerCommands();
         this.addRibbonIcon("home", "Mi Agrupación", (evt: MouseEvent) => {

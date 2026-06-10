@@ -35,6 +35,18 @@ export class DataManager {
         return this.settings.sectores;
     }
 
+    discoverSectoresFromVault(): string[] {
+        const base = this.vault.getAbstractFileByPath(this.basePath());
+        if (!(base instanceof TFolder)) return [];
+        const discovered: string[] = [];
+        for (const child of base.children) {
+            if (child instanceof TFolder && !/^\d{4}-\d{4}$/.test(child.name)) {
+                discovered.push(child.name);
+            }
+        }
+        return discovered;
+    }
+
     private get vault() {
         return this.app.vault;
     }
