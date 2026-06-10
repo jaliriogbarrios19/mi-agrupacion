@@ -1,4 +1,4 @@
-import { PluginSettingTab, Setting, type App, type Plugin } from "obsidian";
+import { PluginSettingTab, Setting, Notice, type App } from "obsidian";
 import type { MiAgrupacionSettings } from "./types";
 import { DEFAULT_SETTINGS } from "./types";
 import type MiAgrupacionPlugin from "./main";
@@ -31,6 +31,10 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
     }
 
     display(): void {
+        this.render();
+    }
+
+    private render(): void {
         const { containerEl } = this;
         containerEl.empty();
 
@@ -49,66 +53,58 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
             );
 
         // ── Sectores ──
-        {
-            const sectoresHeading = containerEl.createDiv();
-            sectoresHeading.createEl("h4", { text: "Sectores" });
-            const sectoresDesc = containerEl.createDiv();
-            sectoresDesc.createEl("p", {
-                text: "Definí los sectores de tu agrupación. Se sincronizan con Supabase.",
-                cls: "setting-item-description",
-            });
+        new Setting(containerEl).setHeading().setName("Sectores");
+        new Setting(containerEl)
+            .setDesc("Definí los sectores de tu agrupación. Se sincronizan con Supabase.");
 
-            const chipsContainer = containerEl.createDiv({ cls: "mi-agrupacion-sectores-chips" });
-            const inputRow = containerEl.createDiv();
-            inputRow.style.display = "flex";
-            inputRow.style.gap = "8px";
-            inputRow.style.marginBottom = "8px";
+        const chipsContainer = containerEl.createDiv({ cls: "mi-agrupacion-sectores-chips" });
+        const inputRow = containerEl.createDiv();
+        inputRow.setCssStyles({ display: "flex", gap: "8px", marginBottom: "8px" });
 
-            const input = inputRow.createEl("input", {
-                type: "text",
-                placeholder: "Nombre del sector",
-            });
-            input.style.flex = "1";
+        const input = inputRow.createEl("input", {
+            type: "text",
+            placeholder: "Nombre del sector",
+        });
+        input.setCssStyles({ flex: "1" });
 
-            const renderChips = () => {
-                chipsContainer.empty();
-                for (const sector of this.settings.sectores) {
-                    const chip = chipsContainer.createEl("span", {
-                        cls: "mi-agrupacion-tag",
-                        text: sector,
-                    });
-                    const x = chip.createEl("span", { text: " ×" });
-                    x.style.cursor = "pointer";
-                    x.addEventListener("click", () => {
-                        this.settings.sectores = this.settings.sectores.filter(
-                            (s) => s !== sector
-                        );
-                        this.saveAndSyncSectores();
-                        renderChips();
-                    });
-                }
-            };
+        const renderChips = () => {
+            chipsContainer.empty();
+            for (const sector of this.settings.sectores) {
+                const chip = chipsContainer.createEl("span", {
+                    cls: "mi-agrupacion-tag",
+                    text: sector,
+                });
+                const x = chip.createEl("span", { text: " ×" });
+                    x.setCssStyles({ cursor: "pointer" });
+                x.addEventListener("click", () => {
+                    this.settings.sectores = this.settings.sectores.filter(
+                        (s) => s !== sector
+                    );
+                    void this.saveAndSyncSectores();
+                    renderChips();
+                });
+            }
+        };
 
-            const addSector = () => {
-                const val = input.value.trim();
-                if (!val || this.settings.sectores.includes(val)) return;
-                this.settings.sectores = [...this.settings.sectores, val];
-                input.value = "";
-                this.saveAndSyncSectores();
-                renderChips();
-            };
-
-            const addBtn = inputRow.createEl("button", { text: "Agregar" });
-            addBtn.addEventListener("click", addSector);
-            input.addEventListener("keydown", (e) => {
-                if (e.key === "Enter") {
-                    e.preventDefault();
-                    addSector();
-                }
-            });
-
+        const addSector = () => {
+            const val = input.value.trim();
+            if (!val || this.settings.sectores.includes(val)) return;
+            this.settings.sectores = [...this.settings.sectores, val];
+            input.value = "";
+            this.saveAndSyncSectores();
             renderChips();
-        }
+        };
+
+        const addBtn = inputRow.createEl("button", { text: "Agregar" });
+        addBtn.addEventListener("click", addSector);
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                addSector();
+            }
+        });
+
+        renderChips();
 
         new Setting(containerEl)
             .setName("Carpeta base")
@@ -167,7 +163,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
 
         // ── Database Setup ──
         const dbSetupSection = containerEl.createDiv({ cls: "mi-agrupacion-db-setup" });
-        dbSetupSection.createEl("h4", { text: "Configuración de la base de datos" });
+        new Setting(dbSetupSection).setHeading().setName("Configuración de la base de datos");
         dbSetupSection.createEl("p", {
             text: "Ejecutá este SQL en el editor de Supabase para crear las tablas necesarias.",
             cls: "setting-item-description",
@@ -179,28 +175,29 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
             text: SETUP_SQL,
         });
         sqlArea.setAttr("readonly", "true");
-        sqlArea.style.width = "100%";
-        sqlArea.style.height = "200px";
-        sqlArea.style.fontFamily = "var(--font-monospace)";
-        sqlArea.style.fontSize = "0.82em";
-        sqlArea.style.resize = "vertical";
+        sqlArea.setCssStyles({
+            width: "100%",
+            height: "200px",
+            fontFamily: "var(--font-monospace)",
+            fontSize: "0.82em",
+            resize: "vertical",
+        });
 
         const btnRow = dbSetupSection.createDiv({ cls: "mi-agrupacion-form-actions" });
 
         const copyBtn = btnRow.createEl("button", { text: "Copiar SQL" });
-        copyBtn.addEventListener("click", async () => {
+        copyBtn.addEventListener("click", () => { void (async () => {
             try {
                 await navigator.clipboard.writeText(SETUP_SQL);
-                sqlArea.style.borderColor = "var(--text-success)";
+                sqlArea.setCssStyles({ borderColor: "var(--text-success)" });
                 window.setTimeout(() => {
-                    sqlArea.style.borderColor = "";
+                    sqlArea.setCssStyles({ borderColor: "" });
                 }, 2000);
             } catch {
                 sqlArea.select();
-                sqlArea.setSelectionRange(0, 99999);
-                document.execCommand("copy");
+                new Notice("No se pudo copiar al portapapeles");
             }
-        });
+        })(); });
 
         if (this.settings.supabaseUrl) {
             const openBtn = btnRow.createEl("button", {
@@ -249,7 +246,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                         void (async () => {
                             this.settings.vaultId = generateId();
                             await this.saveFn();
-                            this.display();
+                            this.render();
                         })();
                     })
                 );
@@ -265,11 +262,11 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                 .addButton((btn) =>
                     btn.setButtonText("Cerrar sesión").onClick(() => {
                         void (async () => {
-                            logout();
+                            void logout();
                             this.settings.authToken = "";
                             this.settings.authEmail = "";
                             await this.saveFn();
-                            this.display();
+                            this.render();
                         })();
                     })
                 );
@@ -300,7 +297,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                                 this.settings.authEmail = email;
                                 await this.saveFn();
                                 this.plugin.startSync();
-                                this.display();
+                                this.render();
                             }).open();
                         })
                 );

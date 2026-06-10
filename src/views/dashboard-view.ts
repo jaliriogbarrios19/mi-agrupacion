@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf } from "obsidian";
+import { ItemView, WorkspaceLeaf, TFile } from "obsidian";
 import type { MiAgrupacionSettings } from "../types";
 import { VIEW_TYPE_DASHBOARD } from "../types";
 
@@ -84,7 +84,7 @@ export class DashboardView extends ItemView {
             this.openMaestro()
         );
 
-        const reportesLabel = contentEl.createEl("h4", {
+        contentEl.createEl("h4", {
             text: "Reportes",
             cls: "mi-agrupacion-section-title",
         });
@@ -124,7 +124,7 @@ export class DashboardView extends ItemView {
                 this.settings.frasesPath
             );
             if (!file || !("extension" in file)) return "";
-            const content = await this.app.vault.cachedRead(file as any);
+            const content = await this.app.vault.cachedRead(file as unknown as TFile);
             const lines = content
                 .split(/\r?\n/)
                 .map((l) => l.trim())

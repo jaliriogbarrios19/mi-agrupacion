@@ -4,7 +4,7 @@ import {
     TFile,
     TFolder,
 } from "obsidian";
-import type { MiAgrupacionSettings, Maestro } from "../types";
+import type { MiAgrupacionSettings, Maestro, Visita, VidaComunitaria, ProcesoEducativo } from "../types";
 import { parseFrontmatterFromContent, buildMarkdownNote } from "./parser";
 import {
     visitaTemplate,
@@ -116,7 +116,7 @@ export class DataManager {
         if (fotoPath) {
             await this.deleteFoto(fotoPath);
         }
-        await this.app.fileManager.trashFile(file);
+        await this.app.vault.trash(file, true);
     }
 
     // -- Scanning --
@@ -214,7 +214,7 @@ export class DataManager {
         if (!fotoPath) return;
         const file = this.vault.getAbstractFileByPath(fotoPath);
         if (file instanceof TFile) {
-            await this.app.fileManager.trashFile(file);
+            await this.app.vault.trash(file, true);
         }
     }
 
@@ -250,7 +250,7 @@ export class DataManager {
         anioEtiqueta: string,
         ciclo: string
     ): Promise<TFile> {
-        const body = visitaTemplate(frontmatter as any);
+        const body = visitaTemplate(frontmatter as unknown as Visita);
         const filename = this.buildVisitaFilename(frontmatter);
         const folder = this.recordsPath(anioEtiqueta, ciclo, "Visitas");
         return this.saveRecord(frontmatter, body, folder, filename);
@@ -261,7 +261,7 @@ export class DataManager {
         anioEtiqueta: string,
         ciclo: string
     ): Promise<TFile> {
-        const body = vidaComunitariaTemplate(frontmatter as any);
+        const body = vidaComunitariaTemplate(frontmatter as unknown as VidaComunitaria);
         const filename = this.buildVidaComunitariaFilename(frontmatter);
         const folder = this.recordsPath(
             anioEtiqueta,
@@ -276,7 +276,7 @@ export class DataManager {
         anioEtiqueta: string,
         ciclo: string
     ): Promise<TFile> {
-        const body = procesoEducativoTemplate(frontmatter as any);
+        const body = procesoEducativoTemplate(frontmatter as unknown as ProcesoEducativo);
         const filename = this.buildProcesoEducativoFilename(frontmatter);
         const folder = this.recordsPath(
             anioEtiqueta,
@@ -287,7 +287,7 @@ export class DataManager {
     }
 
     async saveMaestro(frontmatter: Record<string, unknown>): Promise<TFile> {
-        const body = maestroTemplate(frontmatter as any);
+        const body = maestroTemplate(frontmatter as unknown as Maestro);
         const filename = String(frontmatter.nombre_maestro || "maestro")
             .slice(0, 50)
             .replace(/[\\/:*?"<>|]/g, "-");

@@ -37,7 +37,7 @@ export class GeneralView extends ItemView {
     }
 
     async onOpen(): Promise<void> {
-        this.render();
+        await this.render();
     }
 
     async render(): Promise<void> {
@@ -75,8 +75,6 @@ export class GeneralView extends ItemView {
                 (p) => p.data.sector === this.selectedSector
             );
         }
-
-        const maestrosList = await this.dataManager.scanMaestros();
 
         const totalVisitas = data.visitas.length;
         const hogaresVisitados = new Set(
@@ -162,7 +160,7 @@ export class GeneralView extends ItemView {
     }
 
     private renderCicloSelector(container: HTMLElement): void {
-        const label = container.createSpan({ text: "Ciclo:" });
+        container.createSpan({ text: "Ciclo:" });
         const select = container.createEl("select");
 
         for (const c of CICLOS) {
@@ -176,12 +174,12 @@ export class GeneralView extends ItemView {
                 anioEtiqueta: this.currentCiclo.anioEtiqueta,
                 ciclo: select.value,
             };
-            this.render();
+            void this.render();
         });
     }
 
     private renderSectorSelector(container: HTMLElement): void {
-        const label = container.createEl("span", { text: "Sector:" });
+        container.createEl("span", { text: "Sector:" });
         const select = container.createEl("select");
 
         const optTodos = select.createEl("option", { text: "Todos los sectores" });
@@ -196,7 +194,7 @@ export class GeneralView extends ItemView {
 
         select.addEventListener("change", () => {
             this.selectedSector = select.value;
-            this.render();
+            void this.render();
         });
     }
 

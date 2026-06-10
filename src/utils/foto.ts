@@ -60,9 +60,6 @@ export function renderPreview(
             cls: "mi-agrupacion-foto-preview",
         });
         img.src = resourceUrl;
-        img.style.maxWidth = "200px";
-        img.style.maxHeight = "200px";
-        img.style.borderRadius = "4px";
     } else {
         container.createSpan({
             text: "Archivo adjuntado (vista previa no disponible)",

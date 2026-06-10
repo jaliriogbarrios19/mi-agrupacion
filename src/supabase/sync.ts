@@ -1,4 +1,4 @@
-import { type App, normalizePath, TFile, TFolder } from "obsidian";
+import { type App, normalizePath, TFile } from "obsidian";
 import { restGet, restUpsert, restDelete, isLoggedIn, getVaultSectores } from "./client";
 
 interface RemoteNote {
@@ -193,7 +193,7 @@ export class SyncManager {
                 );
                 if (note.deleted) {
                     if (file instanceof TFile) {
-                        await this.app.fileManager.trashFile(file);
+                        await this.app.vault.trash(file, true);
                     }
                 } else if (file instanceof TFile) {
                     const localContent =
@@ -238,6 +238,7 @@ export class SyncManager {
         }
         this.onStatusChange("↑ Sincronizando...");
         this.pushQueue.clear();
+        // Full vault scan required: bulk sync must push all markdown files in sync folders
         const files = this.app.vault.getMarkdownFiles();
         for (const file of files) {
             if (this.isExcluded(file.path)) continue;

@@ -179,7 +179,7 @@ export class VisitaModal extends Modal {
             type: "text",
             placeholder: "Nombre",
         });
-        input.style.width = "180px";
+        input.setCssStyles({ width: "180px" });
         const addBtn = row.createEl("button", { text: "Agregar" });
         this.visitadosContainer = wrapper.createDiv();
         this.renderVisitadoChips();
@@ -208,7 +208,7 @@ export class VisitaModal extends Modal {
                 text: nombre,
             });
             const x = chip.createEl("span", { text: " ×" });
-            x.style.cursor = "pointer";
+            x.setCssStyles({ cursor: "pointer" });
             x.addEventListener("click", () => {
                 this.nombresVisitados = this.nombresVisitados.filter(
                     (n) => n !== nombre
@@ -227,7 +227,7 @@ export class VisitaModal extends Modal {
             type: "text",
             placeholder: "Buscar maestro...",
         });
-        input.style.width = "200px";
+        input.setCssStyles({ width: "200px" });
 
         new MaestroSuggest(
             this.app,
@@ -249,7 +249,7 @@ export class VisitaModal extends Modal {
                         );
                         const agrupacion = await modal.prompt();
                         if (agrupacion === null) return;
-                        this.dataManager.saveMaestro({
+                        void this.dataManager.saveMaestro({
                             id_maestro: generateId(),
                             nombre_maestro: nombre,
                             agrupacion_origen: agrupacion,
@@ -276,7 +276,7 @@ export class VisitaModal extends Modal {
                 text: nombre,
             });
             const removeBtn = tag.createEl("span", { text: " ×" });
-            removeBtn.style.cursor = "pointer";
+            removeBtn.setCssStyles({ cursor: "pointer" });
             removeBtn.addEventListener("click", () => {
                 this.maestrosSeleccionados =
                     this.maestrosSeleccionados.filter(
@@ -313,7 +313,7 @@ export class VisitaModal extends Modal {
                         );
                         const agrupacion = await modal.prompt();
                         if (agrupacion === null) return;
-                        this.dataManager.saveMaestro({
+                        void this.dataManager.saveMaestro({
                             id_maestro: generateId(),
                             nombre_maestro: nombre,
                             agrupacion_origen: agrupacion,
@@ -338,7 +338,7 @@ export class VisitaModal extends Modal {
         const attachBtn = btnRow.createEl("button", {
             text: "Adjuntar imagen",
         });
-        attachBtn.addEventListener("click", async () => {
+        attachBtn.addEventListener("click", () => { void (async () => {
             const picked = await pickFile();
             if (!picked) return;
             this.fotoPath = await this.dataManager.saveFoto(
@@ -352,7 +352,7 @@ export class VisitaModal extends Modal {
                 this.fotoPath,
                 this.app.vault
             );
-        });
+        })(); });
 
         if (this.fotoPath) {
             renderPreview(
@@ -375,7 +375,7 @@ export class VisitaModal extends Modal {
             text: "Guardar",
             cls: "mod-cta",
         });
-        saveBtn.addEventListener("click", () => this.guardar());
+        saveBtn.addEventListener("click", () => { void this.guardar(); });
     }
 
     private async guardar(): Promise<void> {

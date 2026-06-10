@@ -246,6 +246,9 @@
 .mi-agrupacion-foto-preview {
   margin-top: 8px;
   object-fit: cover;
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 4px;
 }
 
 /* Confirm Modal */
@@ -275,8 +278,8 @@
   background: var(--background-secondary);
 }
 
-.mi-agrupacion-db-setup h4 {
-  margin: 0 0 8px 0;
+.mi-agrupacion-db-setup .setting-item-heading {
+  margin-top: 0;
 }
 
 .mi-agrupacion-sql-textarea {

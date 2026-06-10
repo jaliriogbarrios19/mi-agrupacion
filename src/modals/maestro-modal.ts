@@ -52,7 +52,7 @@ export class MaestroModal extends Modal {
             text: "Guardar",
             cls: "mod-cta",
         });
-        saveBtn.addEventListener("click", () => this.guardar());
+        saveBtn.addEventListener("click", () => { void this.guardar(); });
     }
 
     private async guardar(): Promise<void> {

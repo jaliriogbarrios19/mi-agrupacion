@@ -1,5 +1,5 @@
 import { App, Modal, Setting, Notice } from "obsidian";
-import { login, signup, getCurrentUser, setSession } from "./client";
+import { login, signup } from "./client";
 
 export class LoginModal extends Modal {
     private onSuccess: (email: string) => void;
@@ -39,7 +39,7 @@ export class LoginModal extends Modal {
                 t.inputEl.type = "password";
                 t.onChange((v) => (this.password = v));
                 t.inputEl.addEventListener("keydown", (e) => {
-                    if (e.key === "Enter") this.submit();
+                    if (e.key === "Enter") { void this.submit(); }
                 });
             });
 
@@ -69,7 +69,7 @@ export class LoginModal extends Modal {
                 this.mode === "login" ? "Ingresar" : "Registrarse",
             cls: "mod-cta",
         });
-        submitBtn.addEventListener("click", () => this.submit());
+        submitBtn.addEventListener("click", () => { void this.submit(); });
     }
 
     private async submit(): Promise<void> {

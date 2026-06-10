@@ -1,4 +1,4 @@
-# Mi Agrupación
+# Mi Agrupacion
 
 Plugin de Obsidian para el registro de actividades comunitarias, visitas y proceso educativo de agrupaciones Bahá'ís.
 

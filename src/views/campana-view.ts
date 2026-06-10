@@ -37,7 +37,7 @@ export class CampanaView extends ItemView {
     }
 
     async onOpen(): Promise<void> {
-        this.render();
+        await this.render();
     }
 
     async render(): Promise<void> {
@@ -54,7 +54,7 @@ export class CampanaView extends ItemView {
         });
         toggleBtn.addEventListener("click", () => {
             this.expanded = !this.expanded;
-            this.render();
+            void this.render();
         });
 
         if (!this.expanded) return;
@@ -136,7 +136,7 @@ export class CampanaView extends ItemView {
                 ciclo: select.value,
             };
             this.expanded = true;
-            this.render();
+            void this.render();
         });
     }
 

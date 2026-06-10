@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf } from "obsidian";
+import { ItemView, WorkspaceLeaf, TFile } from "obsidian";
 import type { MiAgrupacionSettings } from "../types";
 import { VIEW_TYPE_RESUMEN_SRP, CICLOS } from "../types";
 import { DataManager } from "../data/manager";
@@ -37,7 +37,7 @@ export class ResumenSRPView extends ItemView {
     }
 
     async onOpen(): Promise<void> {
-        this.render();
+        await this.render();
     }
 
     async render(): Promise<void> {
@@ -54,7 +54,7 @@ export class ResumenSRPView extends ItemView {
         });
         toggleBtn.addEventListener("click", () => {
             this.expanded = !this.expanded;
-            this.render();
+            void this.render();
         });
 
         if (!this.expanded) return;
@@ -82,7 +82,7 @@ export class ResumenSRPView extends ItemView {
 
     private renderVisitasSection(
         container: HTMLElement,
-        visitas: Array<{ file: any; data: Record<string, unknown> }>
+        visitas: Array<{ file: TFile; data: Record<string, unknown> }>
     ): void {
         const section = container.createDiv({ cls: "mi-agrupacion-section" });
         section.createEl("h4", { text: "Visitas" });
@@ -133,7 +133,7 @@ export class ResumenSRPView extends ItemView {
 
     private renderVidaComunitariaSection(
         container: HTMLElement,
-        vida: Array<{ file: any; data: Record<string, unknown> }>
+        vida: Array<{ file: TFile; data: Record<string, unknown> }>
     ): void {
         const section = container.createDiv({ cls: "mi-agrupacion-section" });
         section.createEl("h4", { text: "Vida Comunitaria" });
@@ -187,7 +187,7 @@ export class ResumenSRPView extends ItemView {
                 ciclo: select.value,
             };
             this.expanded = true;
-            this.render();
+            void this.render();
         });
     }
 

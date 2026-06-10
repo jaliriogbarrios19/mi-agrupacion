@@ -161,7 +161,7 @@ export class VidaComunitariaModal extends Modal {
             type: "text",
             placeholder: "Nombre",
         });
-        input.style.width = "180px";
+        input.setCssStyles({ width: "180px" });
         const addBtn = row.createEl("button", { text: "Agregar" });
         const chipsEl = wrapper.createDiv();
         setEl(chipsEl);
@@ -194,7 +194,7 @@ export class VidaComunitariaModal extends Modal {
                 text: item,
             });
             const x = chip.createEl("span", { text: " ×" });
-            x.style.cursor = "pointer";
+            x.setCssStyles({ cursor: "pointer" });
             x.addEventListener("click", () => {
                 const idx = items.indexOf(item);
                 if (idx >= 0) {
@@ -230,7 +230,7 @@ export class VidaComunitariaModal extends Modal {
                         );
                         const agrupacion = await modal.prompt();
                         if (agrupacion === null) return;
-                        this.dataManager.saveMaestro({
+                        void this.dataManager.saveMaestro({
                             id_maestro: generateId(),
                             nombre_maestro: nombre,
                             agrupacion_origen: agrupacion,
@@ -252,7 +252,7 @@ export class VidaComunitariaModal extends Modal {
         this.fotoPreviewEl = wrapper.createDiv();
 
         const btn = wrapper.createEl("button", { text: "Adjuntar imagen" });
-        btn.addEventListener("click", async () => {
+        btn.addEventListener("click", () => { void (async () => {
             const picked = await pickFile();
             if (!picked) return;
             this.fotoPath = await this.dataManager.saveFoto(
@@ -262,7 +262,7 @@ export class VidaComunitariaModal extends Modal {
                 this.ciclo
             );
             renderPreview(this.fotoPreviewEl, this.fotoPath, this.app.vault);
-        });
+        })(); });
     }
 
     private renderButtons(container: HTMLElement): void {
@@ -275,7 +275,7 @@ export class VidaComunitariaModal extends Modal {
             text: "Guardar",
             cls: "mod-cta",
         });
-        saveBtn.addEventListener("click", () => this.guardar());
+        saveBtn.addEventListener("click", () => { void this.guardar(); });
     }
 
     private async guardar(): Promise<void> {

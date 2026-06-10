@@ -139,7 +139,7 @@ export class ProcesoEducativoModal extends Modal {
             type: "text",
             placeholder: "Nombre del participante",
         });
-        input.style.width = "180px";
+        input.setCssStyles({ width: "180px" });
         const addBtn = row.createEl("button", { text: "Agregar" });
         this.tagsEl = wrapper.createDiv();
         this.renderChips();
@@ -168,7 +168,7 @@ export class ProcesoEducativoModal extends Modal {
                 text: p,
             });
             const x = chip.createEl("span", { text: " ×" });
-            x.style.cursor = "pointer";
+            x.setCssStyles({ cursor: "pointer" });
             x.addEventListener("click", () => {
                 this.participantes = this.participantes.filter(
                     (n) => n !== p
@@ -204,7 +204,7 @@ export class ProcesoEducativoModal extends Modal {
                         );
                         const agrupacion = await modal.prompt();
                         if (agrupacion === null) return;
-                        this.dataManager.saveMaestro({
+                        void this.dataManager.saveMaestro({
                             id_maestro: generateId(),
                             nombre_maestro: nombre,
                             agrupacion_origen: agrupacion,
@@ -225,7 +225,7 @@ export class ProcesoEducativoModal extends Modal {
         const wrapper = setting.controlEl.createDiv();
         this.fotoPreviewEl = wrapper.createDiv();
         const btn = wrapper.createEl("button", { text: "Adjuntar imagen" });
-        btn.addEventListener("click", async () => {
+        btn.addEventListener("click", () => { void (async () => {
             const picked = await pickFile();
             if (!picked) return;
             this.fotoPath = await this.dataManager.saveFoto(
@@ -239,7 +239,7 @@ export class ProcesoEducativoModal extends Modal {
                 this.fotoPath,
                 this.app.vault
             );
-        });
+        })(); });
     }
 
     private renderButtons(container: HTMLElement): void {
@@ -252,18 +252,14 @@ export class ProcesoEducativoModal extends Modal {
             text: "Guardar",
             cls: "mod-cta",
         });
-        saveBtn.addEventListener("click", () => this.guardar());
+        saveBtn.addEventListener("click", () => { void this.guardar(); });
     }
 
     private updateConditionalFields(): void {
         if (!this.leccionSetting) return;
         const isClaseNinos = this.tipo === "Clase de Niños";
-        this.leccionSetting.settingEl.style.display = isClaseNinos
-            ? ""
-            : "none";
-        this.libroSetting.settingEl.style.display = isClaseNinos
-            ? "none"
-            : "";
+        this.leccionSetting.settingEl.setCssStyles({ display: isClaseNinos ? "" : "none" });
+        this.libroSetting.settingEl.setCssStyles({ display: isClaseNinos ? "none" : "" });
     }
 
     private async guardar(): Promise<void> {

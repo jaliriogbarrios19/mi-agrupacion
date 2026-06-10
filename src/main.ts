@@ -22,9 +22,8 @@ import { VisitaModal } from "./modals/visita-modal";
 import { VidaComunitariaModal } from "./modals/vida-comunitaria-modal";
 import { ProcesoEducativoModal } from "./modals/proceso-educativo-modal";
 import { MaestroModal } from "./modals/maestro-modal";
-import { configure, setSession, isLoggedIn, getSession, isSessionExpired } from "./supabase/client";
+import { configure, setSession, isLoggedIn, isSessionExpired } from "./supabase/client";
 import { SyncManager } from "./supabase/sync";
-import { generateId } from "./utils/date";
 
 export default class MiAgrupacionPlugin extends Plugin {
     settings: MiAgrupacionSettings;
@@ -99,22 +98,22 @@ export default class MiAgrupacionPlugin extends Plugin {
         this.addCommand({
             id: "open-dashboard",
             name: "Abrir dashboard",
-            callback: () => this.activateView(VIEW_TYPE_DASHBOARD),
+            callback: () => { void this.activateView(VIEW_TYPE_DASHBOARD); },
         });
         this.addCommand({
             id: "open-general",
             name: "Abrir vista general",
-            callback: () => this.activateView(VIEW_TYPE_GENERAL),
+            callback: () => { void this.activateView(VIEW_TYPE_GENERAL); },
         });
         this.addCommand({
             id: "open-resumen-srp",
             name: "Abrir resumen SRP",
-            callback: () => this.activateView(VIEW_TYPE_RESUMEN_SRP),
+            callback: () => { void this.activateView(VIEW_TYPE_RESUMEN_SRP); },
         });
         this.addCommand({
             id: "open-campana",
             name: "Abrir campaña de enseñanza",
-            callback: () => this.activateView(VIEW_TYPE_CAMPANA),
+            callback: () => { void this.activateView(VIEW_TYPE_CAMPANA); },
         });
         this.addCommand({
             id: "nueva-visita",
