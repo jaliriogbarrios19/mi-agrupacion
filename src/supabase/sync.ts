@@ -311,9 +311,15 @@ export class SyncManager {
         }
         this.onStatusChange("🗑️ Limpiando...");
         try {
-            await restDelete("notes", { vault_id: `eq.${this.vaultId}` });
-        } catch {
-            new Notice("Error al limpiar Supabase");
+            const deleted = await restDelete("notes", { vault_id: `eq.${this.vaultId}` });
+            if (!deleted) {
+                this.onStatusChange("⚠️ Error al limpiar");
+                new Notice("No se pudo limpiar Supabase. ¿Token expirado? Cerrá sesión y volvé a iniciar.");
+                return;
+            }
+        } catch (e) {
+            this.onStatusChange("⚠️ Error al limpiar");
+            new Notice(`Error al limpiar: ${String(e).slice(0, 80)}`);
             return;
         }
         new Notice("Supabase limpio. Volviendo a subir...");

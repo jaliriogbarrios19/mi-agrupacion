@@ -82,17 +82,26 @@ async function api(
     if (body !== undefined) {
         params.body = JSON.stringify(body);
     }
-    const res = await requestUrl(params);
-    if (res.status === 401 && accessToken) {
-        const refreshed = await refreshSession();
-        if (refreshed) {
-            params.headers = authHeaders();
-            const retry = await requestUrl(params);
-            return { status: retry.status, json: retry.json };
+    try {
+        const res = await requestUrl(params);
+        return { status: res.status, json: res.json };
+    } catch (e) {
+        const msg = String(e);
+        if (msg.includes("401") && accessToken) {
+            const refreshed = await refreshSession();
+            if (refreshed) {
+                params.headers = authHeaders();
+                try {
+                    const retry = await requestUrl(params);
+                    return { status: retry.status, json: retry.json };
+                } catch (retryErr) {
+                    throw retryErr;
+                }
+            }
+            markSessionExpired();
         }
-        markSessionExpired();
+        throw e;
     }
-    return { status: res.status, json: res.json };
 }
 
 async function refreshSession(): Promise<boolean> {
