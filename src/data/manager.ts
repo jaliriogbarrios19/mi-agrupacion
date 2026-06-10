@@ -312,11 +312,12 @@ export class DataManager {
         );
     }
 
-    async migrateToSectors(): Promise<{ moved: number; skipped: number }> {
+    async migrateToSectors(): Promise<{ moved: number; already: number; errors: number }> {
         let moved = 0;
-        let skipped = 0;
+        let already = 0;
+        let errors = 0;
         const base = this.vault.getAbstractFileByPath(this.basePath());
-        if (!(base instanceof TFolder)) return { moved: 0, skipped: 0 };
+        if (!(base instanceof TFolder)) return { moved: 0, already: 0, errors: 0 };
 
         for (const child of base.children) {
             if (!(child instanceof TFolder)) continue;
@@ -338,26 +339,22 @@ export class DataManager {
                             const sector = String(data.sector || "General");
                             const dest = this.recordsPath(sector, anio, cicloName, entName);
                             await this.ensureFolder(dest);
-                            let destPath = normalizePath(`${dest}/${file.name}`);
-                            let counter = 1;
-                            while (this.vault.getAbstractFileByPath(destPath)) {
-                                const dot = file.name.lastIndexOf(".");
-                                const baseName = dot > 0 ? file.name.substring(0, dot) : file.name;
-                                const ext = dot > 0 ? file.name.substring(dot) : "";
-                                destPath = normalizePath(`${dest}/${baseName}-${counter}${ext}`);
-                                counter++;
+                            const destPath = normalizePath(`${dest}/${file.name}`);
+                            if (this.vault.getAbstractFileByPath(destPath)) {
+                                already++;
+                                continue;
                             }
                             await this.vault.rename(file, destPath);
                             moved++;
                         } catch (e) {
                             console.error(`Migracion: error en ${file.path}:`, e);
-                            skipped++;
+                            errors++;
                         }
                     }
                 }
             }
         }
-        return { moved, skipped };
+        return { moved, already, errors };
     }
 
     // -- Cycle scanning (recursive for reports) --

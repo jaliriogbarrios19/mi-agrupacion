@@ -112,8 +112,8 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
             .addButton((btn) =>
                 btn.setButtonText("Migrar").onClick(() => { void (async () => {
                     const result = await this.plugin.dataManager.migrateToSectors();
-                    new Notice(`${result.moved} registros migrados, ${result.skipped} errores`);
-                    if (result.skipped > 0) {
+                    new Notice(`${result.moved} migrados, ${result.already} ya estaban, ${result.errors} errores`);
+                    if (result.errors > 0) {
                         console.log("Errores de migración — revisá la consola (Ctrl+Shift+I)");
                     }
                     this.plugin.refreshAllViews();
