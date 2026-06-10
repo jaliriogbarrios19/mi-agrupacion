@@ -312,10 +312,11 @@ export class DataManager {
         );
     }
 
-    async migrateToSectors(): Promise<number> {
-        let count = 0;
+    async migrateToSectors(): Promise<{ moved: number; skipped: number }> {
+        let moved = 0;
+        let skipped = 0;
         const base = this.vault.getAbstractFileByPath(this.basePath());
-        if (!(base instanceof TFolder)) return 0;
+        if (!(base instanceof TFolder)) return { moved: 0, skipped: 0 };
 
         for (const child of base.children) {
             if (!(child instanceof TFolder)) continue;
@@ -324,23 +325,39 @@ export class DataManager {
 
             for (const ciclo of child.children) {
                 if (!(ciclo instanceof TFolder)) continue;
+                const cicloName = ciclo.name;
+
                 for (const ent of ciclo.children) {
                     if (!(ent instanceof TFolder) || ent.name === "Fotos") continue;
-                    for (const file of ent.children) {
+                    const entName = ent.name;
+
+                    for (const file of ent.children as TFile[]) {
                         if (!(file instanceof TFile) || file.extension !== "md") continue;
                         try {
                             const data = await this.readRecord(file);
                             const sector = String(data.sector || "General");
-                            const dest = this.recordsPath(sector, anio, ciclo.name, ent.name);
+                            const dest = this.recordsPath(sector, anio, cicloName, entName);
                             await this.ensureFolder(dest);
-                            await this.vault.rename(file, normalizePath(`${dest}/${file.name}`));
-                            count++;
-                        } catch { /* skip corrupt */ }
+                            let destPath = normalizePath(`${dest}/${file.name}`);
+                            let counter = 1;
+                            while (this.vault.getAbstractFileByPath(destPath)) {
+                                const dot = file.name.lastIndexOf(".");
+                                const baseName = dot > 0 ? file.name.substring(0, dot) : file.name;
+                                const ext = dot > 0 ? file.name.substring(dot) : "";
+                                destPath = normalizePath(`${dest}/${baseName}-${counter}${ext}`);
+                                counter++;
+                            }
+                            await this.vault.rename(file, destPath);
+                            moved++;
+                        } catch (e) {
+                            console.error(`Migracion: error en ${file.path}:`, e);
+                            skipped++;
+                        }
                     }
                 }
             }
         }
-        return count;
+        return { moved, skipped };
     }
 
     // -- Cycle scanning (recursive for reports) --

@@ -111,8 +111,11 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
             .setDesc("Mueve los registros sin carpeta de sector a Registros/{sector}/...")
             .addButton((btn) =>
                 btn.setButtonText("Migrar").onClick(() => { void (async () => {
-                    const count = await this.plugin.dataManager.migrateToSectors();
-                    new Notice(`${count} registros migrados a carpetas de sector`);
+                    const result = await this.plugin.dataManager.migrateToSectors();
+                    new Notice(`${result.moved} registros migrados, ${result.skipped} errores`);
+                    if (result.skipped > 0) {
+                        console.log("Errores de migración — revisá la consola (Ctrl+Shift+I)");
+                    }
                     this.plugin.refreshAllViews();
                 })(); })
             );
