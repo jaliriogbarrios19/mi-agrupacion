@@ -1,1 +1,1 @@
-declare var activeDocument: Document;
+declare const activeDocument: Document;
