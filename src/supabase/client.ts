@@ -158,6 +158,20 @@ export async function getCurrentUser(): Promise<{
     return null;
 }
 
+export async function isVaultAdmin(vaultId: string): Promise<boolean> {
+    try {
+        const user = await getCurrentUser();
+        if (!user) return false;
+        const rows = await restGet<{ role: string }>(
+            "vault_members",
+            { vault_id: `eq.${vaultId}`, user_id: `eq.${user.id}`, select: "role" }
+        );
+        return rows.length > 0 && rows[0].role === "admin";
+    } catch {
+        return false;
+    }
+}
+
 // ── REST API helpers ──
 
 export async function restGet<T>(

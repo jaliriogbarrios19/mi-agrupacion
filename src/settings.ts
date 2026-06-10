@@ -2,13 +2,14 @@ import { PluginSettingTab, Setting, Notice, type App } from "obsidian";
 import type { MiAgrupacionSettings } from "./types";
 import { DEFAULT_SETTINGS } from "./types";
 import type MiAgrupacionPlugin from "./main";
-import { isLoggedIn, getSession, logout, setVaultSectores, configure } from "./supabase/client";
+import { isLoggedIn, getSession, logout, setVaultSectores, configure, isVaultAdmin } from "./supabase/client";
 import { SETUP_SQL, getSqlEditorUrl } from "./supabase/setup-sql";
 import { LoginModal } from "./supabase/login-modal";
 import { generateId } from "./utils/date";
 
 export class MiAgrupacionSettingTab extends PluginSettingTab {
     private plugin: MiAgrupacionPlugin;
+    private isAdmin = false;
 
     constructor(app: App, plugin: MiAgrupacionPlugin) {
         super(app, plugin);
@@ -31,12 +32,16 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
     }
 
     display(): void {
-        this.render();
+        void this.render();
     }
 
-    private render(): void {
+    private async render(): Promise<void> {
         const { containerEl } = this;
         containerEl.empty();
+
+        if (isLoggedIn() && this.settings.vaultId) {
+            this.isAdmin = await isVaultAdmin(this.settings.vaultId);
+        }
 
         new Setting(containerEl).setHeading().setName("Mi Agrupación");
 
@@ -262,7 +267,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                         void (async () => {
                             this.settings.vaultId = generateId();
                             await this.saveFn();
-                            this.render();
+                            await this.render();
                         })();
                     })
                 );
@@ -282,7 +287,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                             this.settings.authToken = "";
                             this.settings.authEmail = "";
                             await this.saveFn();
-                            this.render();
+                            await this.render();
                         })();
                     })
                 );
@@ -313,16 +318,18 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                     })
                 );
 
-            new Setting(containerEl)
-                .setName("Limpiar Supabase")
-                .setDesc("Borra todos los datos remotos y vuelve a subir desde cero")
-                .addButton((btn) =>
-                    btn.setButtonText("Limpiar y resubir").setWarning().onClick(() => {
-                        if (this.plugin.syncManager) {
-                            void this.plugin.syncManager.clearAndResync();
-                        }
-                    })
-                );
+            if (this.isAdmin) {
+                new Setting(containerEl)
+                    .setName("Limpiar Supabase")
+                    .setDesc("Borra todos los datos remotos y vuelve a subir desde cero")
+                    .addButton((btn) =>
+                        btn.setButtonText("Limpiar y resubir").setWarning().onClick(() => {
+                            if (this.plugin.syncManager) {
+                                void this.plugin.syncManager.clearAndResync();
+                            }
+                        })
+                    );
+            }
         } else {
             new Setting(containerEl)
                 .setName("Cuenta")
