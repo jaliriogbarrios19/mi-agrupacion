@@ -40,7 +40,8 @@ export class SyncManager {
 
     start(syncIntervalMinutes: number): void {
         this.syncIntervalMs = syncIntervalMinutes * 60 * 1000;
-        void this.ensureVault().then(() => {
+        void this.ensureVault().then((ok) => {
+            if (!ok) return;
             this.vaultReady = true;
             this.registerVaultEvents();
             if (this.syncIntervalMs > 0) {
@@ -53,7 +54,7 @@ export class SyncManager {
         });
     }
 
-    private async ensureVault(): Promise<void> {
+    private async ensureVault(): Promise<boolean> {
         try {
             const existing = await restGet<{ id: string }>(
                 "vaults",
@@ -83,8 +84,11 @@ export class SyncManager {
             if (sectores.length > 0) {
                 this.onSectoresUpdate(sectores);
             }
-        } catch {
-            // will retry on next push
+            return true;
+        } catch (e) {
+            console.error("Mi Agrupacion — ensureVault failed:", e);
+            this.onStatusChange("⚠️ Error de conexión");
+            return false;
         }
     }
 
@@ -250,7 +254,12 @@ export class SyncManager {
             return;
         }
         if (!this.vaultReady) {
-            await this.ensureVault();
+            const ok = await this.ensureVault();
+            if (!ok) {
+                new Notice("No se pudo conectar con Supabase. Revisá la URL y API key.");
+                this.onStatusChange("⚠️ Error de conexión");
+                return;
+            }
             this.vaultReady = true;
         }
         this.onStatusChange("↑ Sincronizando...");
