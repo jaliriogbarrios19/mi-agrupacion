@@ -1,5 +1,5 @@
 import { type App, normalizePath, TFile, Notice } from "obsidian";
-import { restGet, restUpsert, restDelete, isLoggedIn, getVaultSectores } from "./client";
+import { restGet, restUpsert, restDelete, isLoggedIn, getVaultSectores, joinVault, getCurrentUser } from "./client";
 
 interface RemoteNote {
     id: string;
@@ -60,11 +60,24 @@ export class SyncManager {
                 { id: `eq.${this.vaultId}`, select: "id" }
             );
             if (existing.length === 0) {
-                await restUpsert(
+                const user = await getCurrentUser();
+                if (user) {
+                    const joined = await joinVault(this.vaultId, user.id);
+                    if (joined) {
+                        this.onStatusChange("☁️ Unido al vault compartido");
+                    }
+                }
+                const retry = await restGet<{ id: string }>(
                     "vaults",
-                    { id: this.vaultId, name: "Mi Agrupación" },
-                    "id"
+                    { id: `eq.${this.vaultId}`, select: "id" }
                 );
+                if (retry.length === 0) {
+                    await restUpsert(
+                        "vaults",
+                        { id: this.vaultId, name: "Mi Agrupación" },
+                        "id"
+                    );
+                }
             }
             const sectores = await getVaultSectores(this.vaultId);
             if (sectores.length > 0) {

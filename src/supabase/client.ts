@@ -197,6 +197,20 @@ export async function restDelete(
     return res.status >= 200 && res.status < 300;
 }
 
+export async function joinVault(vaultId: string, userId: string): Promise<boolean> {
+    try {
+        const res = await requestUrl({
+            url: `${supabaseUrl}/rest/v1/vault_members`,
+            method: "POST",
+            headers: authHeaders(),
+            body: JSON.stringify({ vault_id: vaultId, user_id: userId }),
+        });
+        return res.status >= 200 && res.status < 300;
+    } catch {
+        return false;
+    }
+}
+
 export async function getVaultSectores(vaultId: string): Promise<string[]> {
     try {
         const rows = await restGet<{ sectores: string }>(
