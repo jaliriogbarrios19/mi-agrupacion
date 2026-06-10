@@ -41,6 +41,9 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
 
         if (isLoggedIn() && this.settings.vaultId) {
             this.isAdmin = await isVaultAdmin(this.settings.vaultId);
+            if (!this.isAdmin) {
+                console.log("Mi Agrupacion — usuario no es admin del vault");
+            }
         }
 
         new Setting(containerEl).setHeading().setName("Mi Agrupación");
@@ -59,71 +62,74 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
 
         // ── Sectores ──
         new Setting(containerEl).setHeading().setName("Sectores");
-        new Setting(containerEl)
-            .setDesc("Definí los sectores de tu agrupación. Se sincronizan con Supabase.");
 
-        const chipsContainer = containerEl.createDiv({ cls: "mi-agrupacion-sectores-chips" });
-        const inputRow = containerEl.createDiv();
-        inputRow.setCssStyles({ display: "flex", gap: "8px", marginBottom: "8px" });
+        if (this.isAdmin) {
+            new Setting(containerEl)
+                .setDesc("Definí los sectores de tu agrupación. Se sincronizan con Supabase.");
 
-        const input = inputRow.createEl("input", {
-            type: "text",
-            placeholder: "Nombre del sector",
-        });
-        input.setCssStyles({ flex: "1" });
+            const chipsContainer = containerEl.createDiv({ cls: "mi-agrupacion-sectores-chips" });
+            const inputRow = containerEl.createDiv();
+            inputRow.setCssStyles({ display: "flex", gap: "8px", marginBottom: "8px" });
 
-        const renderChips = () => {
-            chipsContainer.empty();
+            const input = inputRow.createEl("input", {
+                type: "text",
+                placeholder: "Nombre del sector",
+            });
+            input.setCssStyles({ flex: "1" });
+
+            const renderChips = () => {
+                chipsContainer.empty();
+                for (const sector of this.settings.sectores) {
+                    const chip = chipsContainer.createEl("span", {
+                        cls: "mi-agrupacion-tag",
+                        text: sector,
+                    });
+                    const x = chip.createEl("span", { text: " ×" });
+                        x.setCssStyles({ cursor: "pointer" });
+                    x.addEventListener("click", () => {
+                        this.settings.sectores = this.settings.sectores.filter(
+                            (s) => s !== sector
+                        );
+                        void this.saveAndSyncSectores();
+                        renderChips();
+                    });
+                }
+            };
+
+            const addSector = () => {
+                const val = input.value.trim();
+                if (!val || this.settings.sectores.includes(val)) return;
+                this.settings.sectores = [...this.settings.sectores, val];
+                input.value = "";
+                void this.saveAndSyncSectores();
+                renderChips();
+            };
+
+            const addBtn = inputRow.createEl("button", { text: "Agregar" });
+            addBtn.addEventListener("click", addSector);
+            input.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    addSector();
+                }
+            });
+
+            renderChips();
+        } else {
+            const chipsContainer = containerEl.createDiv({ cls: "mi-agrupacion-sectores-chips" });
             for (const sector of this.settings.sectores) {
-                const chip = chipsContainer.createEl("span", {
+                chipsContainer.createEl("span", {
                     cls: "mi-agrupacion-tag",
                     text: sector,
                 });
-                const x = chip.createEl("span", { text: " ×" });
-                    x.setCssStyles({ cursor: "pointer" });
-                x.addEventListener("click", () => {
-                    this.settings.sectores = this.settings.sectores.filter(
-                        (s) => s !== sector
-                    );
-                    void this.saveAndSyncSectores();
-                    renderChips();
+            }
+            if (this.settings.sectores.length === 0) {
+                containerEl.createEl("p", {
+                    text: "Los sectores se sincronizan desde el administrador del vault.",
+                    cls: "setting-item-description",
                 });
             }
-        };
-
-        const addSector = () => {
-            const val = input.value.trim();
-            if (!val || this.settings.sectores.includes(val)) return;
-            this.settings.sectores = [...this.settings.sectores, val];
-            input.value = "";
-            void this.saveAndSyncSectores();
-            renderChips();
-        };
-
-        const addBtn = inputRow.createEl("button", { text: "Agregar" });
-        addBtn.addEventListener("click", addSector);
-        input.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
-                e.preventDefault();
-                addSector();
-            }
-        });
-
-        renderChips();
-
-        new Setting(containerEl)
-            .setName("Migrar registros existentes")
-            .setDesc("Mueve los registros sin carpeta de sector a Registros/{sector}/...")
-            .addButton((btn) =>
-                btn.setButtonText("Migrar").onClick(() => { void (async () => {
-                    const result = await this.plugin.dataManager.migrateToSectors();
-                    new Notice(`${result.moved} migrados, ${result.already} ya estaban, ${result.errors} errores`);
-                    if (result.errors > 0) {
-                        console.log("Errores de migración — revisá la consola (Ctrl+Shift+I)");
-                    }
-                    this.plugin.refreshAllViews();
-                })(); })
-            );
+        }
 
         new Setting(containerEl)
             .setName("Carpeta base")

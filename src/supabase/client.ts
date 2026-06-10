@@ -161,13 +161,14 @@ export async function getCurrentUser(): Promise<{
 export async function isVaultAdmin(vaultId: string): Promise<boolean> {
     try {
         const user = await getCurrentUser();
-        if (!user) return false;
+        if (!user) { console.warn("Mi Agrupacion — isVaultAdmin: getCurrentUser returned null"); return false; }
         const rows = await restGet<{ role: string }>(
             "vault_members",
             { vault_id: `eq.${vaultId}`, user_id: `eq.${user.id}`, select: "role" }
         );
         return rows.length > 0 && rows[0].role === "admin";
-    } catch {
+    } catch (e) {
+        console.warn("Mi Agrupacion — isVaultAdmin error:", e);
         return false;
     }
 }
