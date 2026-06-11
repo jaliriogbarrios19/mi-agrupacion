@@ -91,12 +91,8 @@ async function api(
             const refreshed = await refreshSession();
             if (refreshed) {
                 params.headers = authHeaders();
-                try {
-                    const retry = await requestUrl(params);
-                    return { status: retry.status, json: retry.json };
-                } catch (retryErr) {
-                    throw retryErr;
-                }
+                const retry = await requestUrl(params);
+                return { status: retry.status, json: retry.json };
             }
             markSessionExpired();
         }

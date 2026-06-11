@@ -332,7 +332,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                                 this.settings.authRefreshToken = s.refresh;
                                 await this.saveFn();
                                 this.plugin.startSync();
-                                await this.render();
+                                this.render();
                             })(); }).open();
                         })
                 );
