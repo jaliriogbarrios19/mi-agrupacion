@@ -304,7 +304,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                 .setName("Limpiar Supabase")
                 .setDesc("Borra todos los datos remotos y vuelve a subir desde cero")
                 .addButton((btn) =>
-                    btn.setButtonText("Limpiar y resubir").setDestructive().onClick(() => { void (async () => {
+                    btn.setButtonText("Limpiar y resubir").setWarning().onClick(() => { void (async () => {
                         if (!await isVaultAdmin(this.settings.vaultId)) {
                             new Notice("Solo el administrador del vault puede hacer esto");
                             return;
