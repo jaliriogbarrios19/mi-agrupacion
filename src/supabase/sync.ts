@@ -208,16 +208,24 @@ export class SyncManager {
             const params: Record<string, string> = {
                 vault_id: `eq.${this.vaultId}`,
                 select: "*",
-                order: "updated_at.desc",
+                order: "updated_at.asc",
                 limit: "100",
             };
             if (this.lastPullAt) {
                 params["updated_at"] = `gt.${this.lastPullAt}`;
             }
 
-            const notes = await restGet<RemoteNote>("notes", params);
+            let allNotes: RemoteNote[] = [];
+            let page = 0;
+            let fetched: RemoteNote[];
+            do {
+                params["offset"] = String(page * 100);
+                fetched = await restGet<RemoteNote>("notes", params);
+                allNotes = allNotes.concat(fetched);
+                page++;
+            } while (fetched.length === 100);
 
-            for (const note of notes) {
+            for (const note of allNotes) {
                 const file = this.app.vault.getAbstractFileByPath(
                     note.path
                 );
@@ -249,12 +257,12 @@ export class SyncManager {
                 }
             }
 
-            if (notes.length > 0) {
+            if (allNotes.length > 0) {
                 this.lastPullAt =
-                    notes[notes.length - 1].updated_at;
+                    allNotes[allNotes.length - 1].updated_at;
             }
             this.onStatusChange("☁️ Conectado");
-            return notes.length;
+            return allNotes.length;
         } catch {
             this.onStatusChange("⚠️ Error de conexión");
             return 0;
