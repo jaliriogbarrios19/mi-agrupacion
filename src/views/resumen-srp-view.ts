@@ -3,6 +3,7 @@ import type { MiAgrupacionSettings, Visita, VidaComunitaria } from "../types";
 import { VIEW_TYPE_RESUMEN_SRP, CICLOS } from "../types";
 import { DataManager, type ScanResult } from "../data/manager";
 import { detectarCiclo } from "../utils/ciclo";
+import { estimarHogares } from "../utils/hogares";
 
 interface CicloInfo {
     anioEtiqueta: string;
@@ -92,9 +93,10 @@ export class ResumenSRPView extends ItemView {
         section.createEl("h4", { text: "Visitas" });
 
         const total = visitas.length;
-        const hogares = new Set(
+        const personasVisitadas = new Set(
             visitas.flatMap((v) => v.data.nombres_visitados)
         ).size;
+        const hogaresEstimados = total > 0 ? estimarHogares(visitas) : 0;
         const simpatizantes = visitas.filter(
             (v) => v.data.condicion === "Simpatizante"
         ).length;
@@ -117,7 +119,8 @@ export class ResumenSRPView extends ItemView {
 
         const lines = [
             `Total de visitas: ${total}`,
-            `Hogares visitados: ${hogares}`,
+            `Personas visitadas: ${personasVisitadas}`,
+            `~Hogares visitados: ${hogaresEstimados}`,
             `Visitas a simpatizantes: ${simpatizantes}`,
             `Hogares nuevos: ${hogaresNuevos}`,
             `Reuniones devocionales: ${devocionales}`,

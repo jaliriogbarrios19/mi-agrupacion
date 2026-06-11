@@ -3,6 +3,7 @@ import type { MiAgrupacionSettings, Visita, VidaComunitaria, ProcesoEducativo } 
 import { VIEW_TYPE_GENERAL, CICLOS } from "../types";
 import { DataManager, type ScanResult } from "../data/manager";
 import { detectarCiclo } from "../utils/ciclo";
+import { estimarHogares } from "../utils/hogares";
 
 interface CicloInfo {
     anioEtiqueta: string;
@@ -81,9 +82,10 @@ export class GeneralView extends ItemView {
         }
 
         const totalVisitas = data.visitas.length;
-        const hogaresVisitados = new Set(
+        const personasVisitadas = new Set(
             data.visitas.flatMap((v) => v.data.nombres_visitados)
         ).size;
+        const hogaresEstimados = totalVisitas > 0 ? estimarHogares(data.visitas) : 0;
 
         const maestrosEnVisitas = new Set<string>();
         for (const v of data.visitas) {
@@ -122,7 +124,8 @@ export class GeneralView extends ItemView {
         const grid = contentEl.createDiv({ cls: "mi-agrupacion-kpi-grid" });
 
         this.kpi(grid, "Visitas realizadas", String(totalVisitas));
-        this.kpi(grid, "Hogares visitados", String(hogaresVisitados));
+        this.kpi(grid, "Personas visitadas", String(personasVisitadas));
+        this.kpi(grid, "~Hogares visitados", String(hogaresEstimados));
         this.kpi(
             grid,
             "Maestros participantes",

@@ -3,6 +3,7 @@ import type { MiAgrupacionSettings, Visita } from "../types";
 import { VIEW_TYPE_CAMPANA, CICLOS } from "../types";
 import { DataManager, type ScanResult } from "../data/manager";
 import { detectarCiclo } from "../utils/ciclo";
+import { estimarHogares } from "../utils/hogares";
 
 interface CicloInfo {
     anioEtiqueta: string;
@@ -104,7 +105,8 @@ export class CampanaView extends ItemView {
             }
         }
 
-        const totalHogares = visitas.length;
+        const totalVisitas = visitas.length;
+        const hogaresEstimados = totalVisitas > 0 ? estimarHogares(visitas) : 0;
 
         const section = contentEl.createDiv({ cls: "mi-agrupacion-section" });
         const stats = [
@@ -113,7 +115,8 @@ export class CampanaView extends ItemView {
             `Hogares nuevos contactados: ${hogaresNuevos}`,
             `Total de Bahá'ís: ${bahais}`,
             `Total de simpatizantes: ${simpatizantes}`,
-            `Total de hogares: ${totalHogares}`,
+            `Total de visitas: ${totalVisitas}`,
+            `~Hogares visitados: ${hogaresEstimados}`,
         ];
 
         for (const s of stats) {
