@@ -4,6 +4,7 @@ import { VIEW_TYPE_GENERAL, CICLOS } from "../types";
 import { DataManager, type ScanResult } from "../data/manager";
 import { detectarCiclo } from "../utils/ciclo";
 import { estimarHogares } from "../utils/hogares";
+import { RecordListModal } from "../modals/record-list-modal";
 
 interface CicloInfo {
     anioEtiqueta: string;
@@ -94,27 +95,27 @@ export class GeneralView extends ItemView {
             }
         }
 
-        const clasesNinos = data.procesoEducativo.filter(
+        const clasesNinosRecords = data.procesoEducativo.filter(
             (p) => p.data.tipo === "Clase de Niños"
-        ).length;
-        const gpj = data.procesoEducativo.filter(
+        );
+        const gpjRecords = data.procesoEducativo.filter(
             (p) => p.data.tipo === "GPJ"
-        ).length;
-        const ce = data.procesoEducativo.filter(
+        );
+        const ceRecords = data.procesoEducativo.filter(
             (p) => p.data.tipo === "Círculo de Estudio"
-        ).length;
+        );
 
-        const fiestas19 = data.vidaComunitaria.filter(
+        const fiestas19Records = data.vidaComunitaria.filter(
             (v) => v.data.tipo_actividad === "Fiesta de 19 días"
-        ).length;
-        const diasSagrados = data.vidaComunitaria.filter(
+        );
+        const diasSagradosRecords = data.vidaComunitaria.filter(
             (v) => v.data.tipo_actividad === "Día Sagrado"
-        ).length;
-        const otrasActividades = data.vidaComunitaria.filter(
+        );
+        const otrasActividadesRecords = data.vidaComunitaria.filter(
             (v) =>
                 v.data.tipo_actividad !== "Fiesta de 19 días" &&
                 v.data.tipo_actividad !== "Día Sagrado"
-        ).length;
+        );
 
         const totalParticipantesVC = data.vidaComunitaria.reduce(
             (acc, v) => acc + (v.data.numero_participantes || 0),
@@ -123,39 +124,80 @@ export class GeneralView extends ItemView {
 
         const grid = contentEl.createDiv({ cls: "mi-agrupacion-kpi-grid" });
 
-        this.kpi(grid, "Visitas realizadas", String(totalVisitas));
-        this.kpi(grid, "Personas visitadas", String(personasVisitadas));
+        this.kpi(grid, "Visitas realizadas", String(totalVisitas), () => {
+            new RecordListModal(this.app, "Visitas realizadas",
+                data.visitas.map(v => ({ file: v.file, data: v.data as unknown as Record<string, unknown> })),
+                ["fecha", "nombres_visitados", "sector"]
+            ).open();
+        });
+        this.kpi(grid, "Personas visitadas", String(personasVisitadas), () => {
+            new RecordListModal(this.app, "Personas visitadas",
+                data.visitas.map(v => ({ file: v.file, data: v.data as unknown as Record<string, unknown> })),
+                ["fecha", "nombres_visitados", "sector"]
+            ).open();
+        });
         this.kpi(grid, "~Hogares visitados", String(hogaresEstimados));
-        this.kpi(
-            grid,
-            "Maestros participantes",
-            String(maestrosEnVisitas.size)
-        );
-        this.kpi(grid, "Fiestas de 19 días", String(fiestas19));
-        this.kpi(grid, "Días Sagrados", String(diasSagrados));
-        this.kpi(grid, "Otras actividades", String(otrasActividades));
-        this.kpi(grid, "Participantes en actividades", String(totalParticipantesVC));
-        this.kpi(
-            grid,
-            "Clases de niños",
-            clasesNinos > 0 ? `${clasesNinos} (activas)` : "0"
-        );
-        this.kpi(
-            grid,
-            "GPJ",
-            gpj > 0 ? `${gpj} (activos)` : "0"
-        );
-        this.kpi(
-            grid,
-            "CE",
-            ce > 0 ? `${ce} (activas)` : "0"
-        );
+        this.kpi(grid, "Maestros participantes", String(maestrosEnVisitas.size), () => {
+            new RecordListModal(this.app, "Maestros participantes",
+                data.visitas.map(v => ({ file: v.file, data: v.data as unknown as Record<string, unknown> })),
+                ["fecha", "maestros", "sector"]
+            ).open();
+        });
+        this.kpi(grid, "Fiestas de 19 días", String(fiestas19Records.length), () => {
+            new RecordListModal(this.app, "Fiestas de 19 días",
+                fiestas19Records.map(v => ({ file: v.file, data: v.data as unknown as Record<string, unknown> })),
+                ["fecha", "numero_participantes", "sector"]
+            ).open();
+        });
+        this.kpi(grid, "Días Sagrados", String(diasSagradosRecords.length), () => {
+            new RecordListModal(this.app, "Días Sagrados",
+                diasSagradosRecords.map(v => ({ file: v.file, data: v.data as unknown as Record<string, unknown> })),
+                ["fecha", "numero_participantes", "sector"]
+            ).open();
+        });
+        this.kpi(grid, "Otras actividades", String(otrasActividadesRecords.length), () => {
+            new RecordListModal(this.app, "Otras actividades",
+                otrasActividadesRecords.map(v => ({ file: v.file, data: v.data as unknown as Record<string, unknown> })),
+                ["fecha", "tipo_actividad", "numero_participantes", "sector"]
+            ).open();
+        });
+        this.kpi(grid, "Participantes en actividades", String(totalParticipantesVC), () => {
+            new RecordListModal(this.app, "Participantes en actividades",
+                data.vidaComunitaria.map(v => ({ file: v.file, data: v.data as unknown as Record<string, unknown> })),
+                ["fecha", "tipo_actividad", "numero_participantes", "sector"]
+            ).open();
+        });
+        this.kpi(grid, "Clases de niños",
+            clasesNinosRecords.length > 0 ? `${clasesNinosRecords.length} (activas)` : "0", () => {
+            new RecordListModal(this.app, "Clases de niños",
+                clasesNinosRecords.map(p => ({ file: p.file, data: p.data as unknown as Record<string, unknown> })),
+                ["fecha", "facilitador", "participantes", "sector"]
+            ).open();
+        });
+        this.kpi(grid, "GPJ",
+            gpjRecords.length > 0 ? `${gpjRecords.length} (activos)` : "0", () => {
+            new RecordListModal(this.app, "GPJ",
+                gpjRecords.map(p => ({ file: p.file, data: p.data as unknown as Record<string, unknown> })),
+                ["fecha", "facilitador", "participantes", "sector"]
+            ).open();
+        });
+        this.kpi(grid, "CE",
+            ceRecords.length > 0 ? `${ceRecords.length} (activas)` : "0", () => {
+            new RecordListModal(this.app, "Círculos de Estudio",
+                ceRecords.map(p => ({ file: p.file, data: p.data as unknown as Record<string, unknown> })),
+                ["fecha", "facilitador", "participantes", "sector"]
+            ).open();
+        });
     }
 
-    private kpi(container: HTMLElement, label: string, value: string): void {
+    private kpi(container: HTMLElement, label: string, value: string, onClick?: () => void): void {
         const card = container.createDiv({ cls: "mi-agrupacion-kpi-card" });
         card.createDiv({ cls: "mi-agrupacion-kpi-value", text: value });
         card.createDiv({ cls: "mi-agrupacion-kpi-label", text: label });
+        if (onClick) {
+            card.setCssStyles({ cursor: "pointer" });
+            card.addEventListener("click", onClick);
+        }
     }
 
     private renderCicloSelector(container: HTMLElement): void {
