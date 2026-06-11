@@ -26,7 +26,11 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
     private async saveAndSyncSectores(): Promise<void> {
         await this.plugin.saveSettings();
         if (this.settings.vaultId && this.settings.supabaseUrl) {
-            void setVaultSectores(this.settings.vaultId, this.settings.sectores);
+            try {
+                await setVaultSectores(this.settings.vaultId, this.settings.sectores);
+            } catch {
+                // sectors updated locally; Supabase sync will retry on next save
+            }
         }
     }
 
