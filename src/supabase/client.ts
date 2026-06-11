@@ -129,22 +129,31 @@ async function refreshSession(): Promise<boolean> {
 export async function signup(
     email: string,
     password: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; autoConfirmed: boolean; error?: string }> {
     try {
         const res = await api("POST", "/auth/v1/signup", {
             email,
             password,
         });
         if (res.status >= 200 && res.status < 300) {
-            return { success: true };
+            const data = res.json as Record<string, unknown>;
+            const hasToken = !!(data.access_token as string | undefined);
+            if (hasToken) {
+                const d = data as { access_token: string; refresh_token?: string; user?: { email: string } };
+                accessToken = d.access_token;
+                refreshToken = d.refresh_token || "";
+                userEmail = d.user?.email || email;
+            }
+            return { success: true, autoConfirmed: hasToken };
         }
         const data = res.json as Record<string, unknown>;
         return {
             success: false,
+            autoConfirmed: false,
             error: (data.msg as string) || "Error al registrar",
         };
     } catch (e) {
-        return { success: false, error: String(e) };
+        return { success: false, autoConfirmed: false, error: String(e) };
     }
 }
 

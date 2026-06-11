@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile } from "obsidian";
+import { ItemView, WorkspaceLeaf } from "obsidian";
 import type { MiAgrupacionSettings } from "../types";
 import { VIEW_TYPE_DASHBOARD } from "../types";
 
@@ -61,12 +61,6 @@ export class DashboardView extends ItemView {
         const header = contentEl.createDiv({ cls: "mi-agrupacion-dash-header" });
         header.createEl("h2", { text: this.settings.nombreAgrupacion });
 
-        const frase = await this.getFrase();
-        if (frase) {
-            const cita = contentEl.createDiv({ cls: "mi-agrupacion-dash-cita" });
-            cita.createEl("blockquote", { text: frase });
-        }
-
         const actions = contentEl.createDiv({
             cls: "mi-agrupacion-dash-actions",
         });
@@ -115,25 +109,6 @@ export class DashboardView extends ItemView {
         });
         btn.createSpan({ text: text });
         btn.addEventListener("click", onClick);
-    }
-
-    private async getFrase(): Promise<string> {
-        if (!this.settings.frasesPath) return "";
-        try {
-            const file = this.app.vault.getAbstractFileByPath(
-                this.settings.frasesPath
-            );
-            if (!(file instanceof TFile)) return "";
-            const content = await this.app.vault.cachedRead(file);
-            const lines = content
-                .split(/\r?\n/)
-                .map((l) => l.trim())
-                .filter((l) => l.length > 0 && !l.startsWith("#"));
-            if (lines.length === 0) return "";
-            return lines[Math.floor(Math.random() * lines.length)];
-        } catch {
-            return "";
-        }
     }
 
     updateSettings(settings: MiAgrupacionSettings): void {

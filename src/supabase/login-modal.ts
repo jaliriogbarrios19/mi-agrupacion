@@ -81,9 +81,15 @@ export class LoginModal extends Modal {
         if (this.mode === "register") {
             const res = await signup(this.email, this.password);
             if (res.success) {
-                new Notice("Cuenta creada. Revisá tu email para confirmar.");
-                this.mode = "login";
-                this.onOpen();
+                if (res.autoConfirmed) {
+                    new Notice("Cuenta creada. Sesión iniciada.");
+                    this.onSuccess(this.email);
+                    this.close();
+                } else {
+                    new Notice("Cuenta creada. Revisá tu email para confirmar.");
+                    this.mode = "login";
+                    this.onOpen();
+                }
             } else {
                 new Notice(res.error || "Error al registrar");
             }

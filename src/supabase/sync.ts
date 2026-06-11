@@ -1,49 +1,55 @@
-import { type App, normalizePath, TFile, Notice } from "obsidian";
-import { restGet, restUpsert, restDelete, isLoggedIn, getVaultSectores, joinVault, getCurrentUser } from "./client";
-
-interface RemoteNote {
-    id: string;
-    vault_id: string;
-    path: string;
-    content: string;
-    updated_at: string;
-    deleted: boolean;
-}
+import { type App, Notice } from "obsidian";
+import { restGet, restUpsert, restDelete, isLoggedIn, getVaultSectores, setVaultSectores, joinVault, getCurrentUser } from "./client";
+import { PullHandler, type SyncState } from "./sync-pull";
+import { PushHandler } from "./sync-push";
 
 export class SyncManager {
     private app: App;
     private vaultId: string;
-    private lastPullAt = "";
-    private pushQueue: Set<string> = new Set();
-    private debounceTimer: number | null = null;
     private pullInterval: number | null = null;
     private syncIntervalMs = 0;
     private onStatusChange: (text: string) => void;
-    private vaultReady = false;
-    private syncFolders: string[];
-
     private onSectoresUpdate: (sectores: string[]) => void;
+    private defaultSectores: string[];
+    private state: SyncState;
+    private pullHandler: PullHandler;
+    private pushHandler: PushHandler;
 
     constructor(
         app: App,
         vaultId: string,
         onStatusChange: (text: string) => void,
         syncFolders: string[] = ["Registros"],
-        onSectoresUpdate: (sectores: string[]) => void = () => {}
+        onSectoresUpdate: (sectores: string[]) => void = () => {},
+        defaultSectores: string[] = []
     ) {
         this.app = app;
         this.vaultId = vaultId;
         this.onStatusChange = onStatusChange;
-        this.syncFolders = syncFolders.map((f) => normalizePath(f));
         this.onSectoresUpdate = onSectoresUpdate;
+        this.defaultSectores = defaultSectores;
+        this.state = {
+            vaultReady: false,
+            lastPullAt: "",
+            currentSectores: [...defaultSectores],
+        };
+        this.pullHandler = new PullHandler(
+            app, vaultId, syncFolders,
+            onStatusChange, onSectoresUpdate,
+            () => this.ensureVault(),
+            defaultSectores
+        );
+        this.pushHandler = new PushHandler(
+            app, vaultId, syncFolders, onStatusChange
+        );
     }
 
     start(syncIntervalMinutes: number): void {
         this.syncIntervalMs = syncIntervalMinutes * 60 * 1000;
         void this.ensureVault().then((ok) => {
             if (!ok) return;
-            this.vaultReady = true;
-            this.registerVaultEvents();
+            this.state.vaultReady = true;
+            this.pushHandler.registerVaultEvents(() => this.state.vaultReady);
             if (this.syncIntervalMs > 0) {
                 this.pullInterval = window.setInterval(
                     () => { void this.pullChanges(); },
@@ -75,14 +81,23 @@ export class SyncManager {
                 if (retry.length === 0) {
                     await restUpsert(
                         "vaults",
-                        { id: this.vaultId, name: "Mi Agrupación" },
+                        {
+                            id: this.vaultId,
+                            name: "Mi Agrupación",
+                            sectores: JSON.stringify(this.defaultSectores),
+                        },
                         "id"
                     );
                 }
             }
             const sectores = await getVaultSectores(this.vaultId);
             if (sectores.length > 0) {
+                this.state.currentSectores = sectores;
                 this.onSectoresUpdate(sectores);
+            } else if (this.defaultSectores.length > 0) {
+                this.state.currentSectores = this.defaultSectores;
+                await setVaultSectores(this.vaultId, this.defaultSectores);
+                this.onSectoresUpdate(this.defaultSectores);
             }
             return true;
         } catch (e) {
@@ -97,176 +112,10 @@ export class SyncManager {
             window.clearInterval(this.pullInterval);
             this.pullInterval = null;
         }
-        if (this.debounceTimer) {
-            window.clearTimeout(this.debounceTimer);
-            this.debounceTimer = null;
-        }
     }
-
-    // ── Vault Events (Push) ──
-
-    private registerVaultEvents(): void {
-        this.app.vault.on("create", (file) => {
-            if (!(file instanceof TFile)) return;
-            if (this.isExcluded(file.path)) return;
-            this.enqueue(file.path);
-        });
-
-        this.app.vault.on("modify", (file) => {
-            if (!(file instanceof TFile)) return;
-            if (this.isExcluded(file.path)) return;
-            this.enqueue(file.path);
-        });
-
-        this.app.vault.on("delete", (file) => {
-            if (!(file instanceof TFile)) return;
-            const path = file.path;
-            if (this.isExcluded(path)) return;
-            void restDelete("notes", {
-                vault_id: `eq.${this.vaultId}`,
-                path: `eq.${path}`,
-            });
-        });
-    }
-
-    private isIncluded(path: string): boolean {
-        const normalized = normalizePath(path);
-        return this.syncFolders.some(
-            (f) => normalized.startsWith(f + "/") || normalized === f
-        );
-    }
-
-    private isExcluded(path: string): boolean {
-        return !this.isIncluded(path);
-    }
-
-    private enqueue(path: string): void {
-        this.pushQueue.add(path);
-        if (this.debounceTimer) {
-            window.clearTimeout(this.debounceTimer);
-        }
-        this.debounceTimer = window.setTimeout(
-            () => { void this.flushQueue(); },
-            1000
-        );
-    }
-
-    private async flushQueue(): Promise<void> {
-        if (!isLoggedIn() || !this.vaultReady || this.pushQueue.size === 0)
-            return;
-        const paths = [...this.pushQueue];
-        this.pushQueue.clear();
-        this.onStatusChange("↑ Sincronizando...");
-
-        for (const path of paths) {
-            const file = this.app.vault.getAbstractFileByPath(path);
-            if (!(file instanceof TFile)) continue;
-            try {
-                const content = await this.app.vault.cachedRead(file);
-                await restUpsert(
-                    "notes",
-                    {
-                        vault_id: this.vaultId,
-                        path,
-                        content,
-                        updated_at: new Date().toISOString(),
-                    },
-                    "vault_id,path"
-                );
-            } catch {
-                // skip
-            }
-        }
-        this.onStatusChange("☁️ Conectado");
-    }
-
-    // ── Pull ──
 
     async pullChanges(): Promise<number> {
-        if (!isLoggedIn()) return 0;
-        if (!this.vaultReady) {
-            const ok = await this.ensureVault();
-            if (!ok) {
-                if (!isLoggedIn()) {
-                    new Notice("Sesión expirada. Cerrá sesión y volvé a iniciar.");
-                } else {
-                    new Notice("No se pudo conectar con Supabase. Revisá la URL y API key.");
-                }
-                this.onStatusChange("⚠️ Error de conexión");
-                return 0;
-            }
-            this.vaultReady = true;
-        }
-        this.onStatusChange("↓ Recibiendo...");
-
-        try {
-            const sectores = await getVaultSectores(this.vaultId);
-            if (sectores.length > 0) {
-                this.onSectoresUpdate(sectores);
-            }
-
-            const params: Record<string, string> = {
-                vault_id: `eq.${this.vaultId}`,
-                select: "*",
-                order: "updated_at.asc",
-                limit: "100",
-            };
-            if (this.lastPullAt) {
-                params["updated_at"] = `gt.${this.lastPullAt}`;
-            }
-
-            let allNotes: RemoteNote[] = [];
-            let page = 0;
-            let fetched: RemoteNote[];
-            do {
-                params["offset"] = String(page * 100);
-                fetched = await restGet<RemoteNote>("notes", params);
-                allNotes = allNotes.concat(fetched);
-                page++;
-            } while (fetched.length === 100);
-
-            for (const note of allNotes) {
-                const file = this.app.vault.getAbstractFileByPath(
-                    note.path
-                );
-                if (note.deleted) {
-                    if (file instanceof TFile) {
-                        await this.app.fileManager.trashFile(file);
-                    }
-                } else if (file instanceof TFile) {
-                    const localContent =
-                        await this.app.vault.cachedRead(file);
-                    if (localContent !== note.content) {
-                        await this.app.vault.modify(file, note.content);
-                    }
-                } else {
-                    const folder = note.path
-                        .split("/")
-                        .slice(0, -1)
-                        .join("/");
-                    if (folder) {
-                        try {
-                            await this.app.vault.createFolder(
-                                normalizePath(folder)
-                            );
-                        } catch {
-                            // ok
-                        }
-                    }
-                    await this.app.vault.create(note.path, note.content);
-                }
-            }
-
-            if (allNotes.length > 0) {
-                this.lastPullAt =
-                    allNotes[allNotes.length - 1].updated_at;
-            }
-            this.onStatusChange("☁️ Conectado");
-            return allNotes.length;
-        } catch {
-            this.onStatusChange("⚠️ Error de conexión");
-            return 0;
-        }
+        return this.pullHandler.pullChanges();
     }
 
     async pushNow(): Promise<void> {
@@ -274,7 +123,7 @@ export class SyncManager {
             new Notice("Iniciá sesión primero para sincronizar");
             return;
         }
-        if (!this.vaultReady) {
+        if (!this.state.vaultReady) {
             const ok = await this.ensureVault();
             if (!ok) {
                 if (!isLoggedIn()) {
@@ -285,10 +134,10 @@ export class SyncManager {
                 this.onStatusChange("⚠️ Error de conexión");
                 return;
             }
-            this.vaultReady = true;
+            this.state.vaultReady = true;
         }
         this.onStatusChange("↑ Sincronizando...");
-        this.pushQueue.clear();
+        this.pushHandler.clearQueue();
         const files = this.app.vault.getMarkdownFiles();
         if (files.length === 0) {
             new Notice("No se encontraron archivos. Si estás en mobile, esperá unos segundos y reintentá.");
@@ -298,7 +147,7 @@ export class SyncManager {
         let pushed = 0;
         let skipped = 0;
         for (const file of files) {
-            if (this.isExcluded(file.path)) continue;
+            if (this.pushHandler.isExcluded(file.path)) continue;
             try {
                 const content = await this.app.vault.cachedRead(file);
                 const ok = await restUpsert(
@@ -325,10 +174,10 @@ export class SyncManager {
             new Notice("Iniciá sesión primero");
             return;
         }
-        if (!this.vaultReady) {
+        if (!this.state.vaultReady) {
             const ok = await this.ensureVault();
             if (!ok) { new Notice("No se pudo conectar con Supabase"); return; }
-            this.vaultReady = true;
+            this.state.vaultReady = true;
         }
         this.onStatusChange("🗑️ Limpiando...");
         try {

@@ -1,6 +1,6 @@
 import { PluginSettingTab, Setting, Notice, type App } from "obsidian";
 import type { MiAgrupacionSettings } from "./types";
-import { DEFAULT_SETTINGS } from "./types";
+
 import type MiAgrupacionPlugin from "./main";
 import { isLoggedIn, getSession, logout, setVaultSectores, configure, isVaultAdmin } from "./supabase/client";
 import { SETUP_SQL, getSqlEditorUrl } from "./supabase/setup-sql";
@@ -109,33 +109,6 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
         });
 
         renderChips();
-
-        new Setting(containerEl)
-            .setName("Carpeta base")
-            .setDesc("Carpeta raíz donde se guardan los registros")
-            .addText((text) =>
-                text
-                    .setValue(this.settings.carpetaBase)
-                    .onChange(async (value) => {
-                        this.settings.carpetaBase =
-                            value.trim() || DEFAULT_SETTINGS.carpetaBase;
-                        await this.saveFn();
-                    })
-            );
-
-        new Setting(containerEl)
-            .setName("Archivo de frases")
-            .setDesc(
-                "Ruta a un archivo .md con frases inspiracionales (una por línea). Opcional."
-            )
-            .addText((text) =>
-                text
-                    .setValue(this.settings.frasesPath)
-                    .onChange(async (value) => {
-                        this.settings.frasesPath = value.trim();
-                        await this.saveFn();
-                    })
-            );
 
         // ── Supabase Sync ──
         new Setting(containerEl).setHeading().setName("Sincronización (Supabase)");
@@ -308,22 +281,23 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                     })(); })
                 )
 
-            new Setting(containerEl)
-                .setName("Limpiar Supabase")
-                .setDesc("Borra todos los datos remotos y vuelve a subir desde cero")
-                .addButton((btn) =>
-                    btn.setButtonText("Limpiar y resubir").setWarning().onClick(() => { void (async () => {
-                        if (!await isVaultAdmin(this.settings.vaultId)) {
-                            new Notice("Solo el administrador del vault puede hacer esto");
-                            return;
-                        }
-                        if (this.plugin.syncManager) {
-                            void this.plugin.syncManager.clearAndResync();
-                        } else {
-                            new Notice("Sync no inicializado. ¿Sesión expirada?");
-                        }
-                    })(); })
-                );
+            const limpiarContainer = containerEl.createDiv();
+            void (async () => {
+                if (this.settings.vaultId && await isVaultAdmin(this.settings.vaultId)) {
+                    new Setting(limpiarContainer)
+                        .setName("Limpiar Supabase")
+                        .setDesc("Borra todos los datos remotos y vuelve a subir desde cero")
+                        .addButton((btn) =>
+                            btn.setButtonText("Limpiar y resubir").setWarning().onClick(() => { void (async () => {
+                                if (this.plugin.syncManager) {
+                                    void this.plugin.syncManager.clearAndResync();
+                                } else {
+                                    new Notice("Sync no inicializado. ¿Sesión expirada?");
+                                }
+                            })(); })
+                        );
+                }
+            })();
         } else {
             new Setting(containerEl)
                 .setName("Cuenta")

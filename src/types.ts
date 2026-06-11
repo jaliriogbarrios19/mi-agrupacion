@@ -53,7 +53,6 @@ export interface ProcesoEducativo {
 export interface MiAgrupacionSettings {
     nombreAgrupacion: string;
     carpetaBase: string;
-    frasesPath: string;
     sectores: string[];
     supabaseUrl: string;
     supabaseAnonKey: string;
@@ -64,11 +63,12 @@ export interface MiAgrupacionSettings {
     vaultId: string;
 }
 
+export const DEFAULT_SECTORES = ["General"];
+
 export const DEFAULT_SETTINGS: MiAgrupacionSettings = {
     nombreAgrupacion: "Mi Agrupación",
     carpetaBase: "Registros",
-    frasesPath: "",
-    sectores: [],
+    sectores: [...DEFAULT_SECTORES],
     supabaseUrl: "",
     supabaseAnonKey: "",
     syncInterval: 0,

@@ -2,10 +2,11 @@ import {
     Plugin,
     WorkspaceLeaf,
     Notice,
+    TFolder,
 } from "obsidian";
 
 import type { MiAgrupacionSettings } from "./types";
-import { DEFAULT_SETTINGS } from "./types";
+import { DEFAULT_SETTINGS, DEFAULT_SECTORES } from "./types";
 import {
     VIEW_TYPE_DASHBOARD,
     VIEW_TYPE_GENERAL,
@@ -33,6 +34,13 @@ export default class MiAgrupacionPlugin extends Plugin {
 
     async onload(): Promise<void> {
         await this.loadSettings();
+
+        const resolved = this.findCarpetaBase();
+        if (resolved !== this.settings.carpetaBase) {
+            this.settings.carpetaBase = resolved;
+            await this.saveSettings();
+        }
+
         this.dataManager = new DataManager(this.app, this.settings);
 
         const discovered = this.dataManager.discoverSectoresFromVault();
@@ -43,6 +51,10 @@ export default class MiAgrupacionPlugin extends Plugin {
                 await this.saveSettings();
                 this.dataManager.updateSettings(this.settings);
             }
+        }
+        if (this.settings.sectores.length === 0) {
+            this.settings.sectores = [...DEFAULT_SECTORES];
+            await this.saveSettings();
         }
 
         this.registerViews();
@@ -238,12 +250,27 @@ export default class MiAgrupacionPlugin extends Plugin {
         await this.saveData(this.settings);
     }
 
+    private findCarpetaBase(): string {
+        const root = this.app.vault.getAbstractFileByPath("");
+        if (root instanceof TFolder) {
+            for (const child of root.children) {
+                if (child instanceof TFolder && child.name === "Registros") {
+                    return child.path;
+                }
+            }
+        }
+        return "Registros";
+    }
+
     startSync(): void {
         if (!this.settings.vaultId || !this.settings.supabaseUrl) return;
         if (isSessionExpired()) {
             this.syncStatusBar.setText("⚠️ Sesión expirada");
             return;
         }
+        const localSectores = this.settings.sectores.length > 0
+            ? this.settings.sectores
+            : DEFAULT_SECTORES;
         this.syncManager = new SyncManager(
             this.app,
             this.settings.vaultId,
@@ -256,7 +283,8 @@ export default class MiAgrupacionPlugin extends Plugin {
                     this.settings.sectores = sectores;
                     void this.saveSettings();
                 }
-            }
+            },
+            localSectores
         );
         this.syncManager.start(this.settings.syncInterval);
         this.syncStatusBar.setText("☁️ Conectado");
