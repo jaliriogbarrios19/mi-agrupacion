@@ -41,9 +41,21 @@ Applied first round of Obsidian review bot feedback. Bot found 30+ issues across
 - `src/data/parser.ts` — Custom YAML parser (frontmatter)
 - `src/data/templates.ts` — Markdown body templates
 - `src/types.ts` — Interfaces, defaults, constants
-- `src/modals/` — Modal forms: visita, vida-comunitaria, proceso-educativo, maestro
+- `src/modals/` — Modal forms: visita, vida-comunitaria, proceso-educativo, maestro, record-list-modal
 - `src/views/` — ItemViews: dashboard, general, resumen-srp, campana
 - `src/supabase/` — Supabase REST client, sync manager, login modal
-- `src/utils/` — File picker, confirm modal, prompt modal, dates, ciclo detector
-- `manifest.json` — minAppVersion: 1.6.6
-- `versions.json` — Version history with minAppVersion per version
+- `src/utils/` — File picker, confirm modal, prompt modal, dates, ciclo detector, hogares
+
+### Sync & Pagination (v0.3.8)
+- `pullChanges()` paginates: fetches records in pages of 100 (`order: updated_at.asc`, `offset` param), accumulating in `allNotes[]` until `fetched.length < 100`.
+- `lastPullAt` set from newest record in `allNotes` for incremental pulls.
+- After initial full download, subsequent pulls are incremental via `updated_at > lastPullAt`.
+- **Future optimization**: process pages incrementally instead of accumulating all in memory; show progress like "Descargando página X/Y".
+
+### Dashboard & KPIs (v0.3.8+)
+- KPI cards in General View are clickable — open `RecordListModal` with matching records.
+- `RecordListModal` shows fields per record type and a clickable link to open the file.
+
+### ~Hogares (v0.3.5+)
+- `src/utils/hogares.ts`: `estimarHogares()` uses union-find to group visits sharing at least one person name.
+- Display label: `~Hogares visitados` — tilde signals estimated value.
