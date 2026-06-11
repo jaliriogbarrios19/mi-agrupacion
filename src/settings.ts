@@ -287,18 +287,22 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                     })
                 )
                 .addButton((btn) =>
-                    btn.setButtonText("Solo descargar").onClick(() => {
-                        if (this.plugin.syncManager) {
-                            void (async () => {
-                                const pulled = await this.plugin.syncManager!.pullChanges();
-                                new Notice(`Descargados: ${pulled} registros`);
-                                this.plugin.refreshAllViews();
-                            })();
-                        } else {
+                    btn.setButtonText("Solo descargar").onClick(() => { void (async () => {
+                        if (!this.plugin.syncManager) {
                             new Notice("El sync no está inicializado.");
+                            return;
                         }
-                    })
-                );
+                        if (!isLoggedIn()) {
+                            new Notice("Sesión expirada. Cerrá sesión y volvé a iniciar.");
+                            return;
+                        }
+                        const pulled = await this.plugin.syncManager!.pullChanges();
+                        if (pulled > 0) {
+                            new Notice(`Descargados: ${pulled} registros`);
+                            this.plugin.refreshAllViews();
+                        }
+                    })(); })
+                )
 
             new Setting(containerEl)
                 .setName("Limpiar Supabase")

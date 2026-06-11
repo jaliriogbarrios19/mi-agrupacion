@@ -183,7 +183,20 @@ export class SyncManager {
     // ── Pull ──
 
     async pullChanges(): Promise<number> {
-        if (!isLoggedIn() || !this.vaultReady) return 0;
+        if (!isLoggedIn()) return 0;
+        if (!this.vaultReady) {
+            const ok = await this.ensureVault();
+            if (!ok) {
+                if (!isLoggedIn()) {
+                    new Notice("Sesión expirada. Cerrá sesión y volvé a iniciar.");
+                } else {
+                    new Notice("No se pudo conectar con Supabase. Revisá la URL y API key.");
+                }
+                this.onStatusChange("⚠️ Error de conexión");
+                return 0;
+            }
+            this.vaultReady = true;
+        }
         this.onStatusChange("↓ Recibiendo...");
 
         try {
