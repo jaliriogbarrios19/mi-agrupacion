@@ -9,7 +9,6 @@ import { generateId } from "./utils/date";
 
 export class MiAgrupacionSettingTab extends PluginSettingTab {
     private plugin: MiAgrupacionPlugin;
-    private isAdmin = false;
 
     constructor(app: App, plugin: MiAgrupacionPlugin) {
         super(app, plugin);
@@ -32,19 +31,12 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
     }
 
     display(): void {
-        void this.render();
+        this.render();
     }
 
-    private async render(): Promise<void> {
+    private render(): void {
         const { containerEl } = this;
         containerEl.empty();
-
-        if (isLoggedIn() && this.settings.vaultId) {
-            this.isAdmin = await isVaultAdmin(this.settings.vaultId);
-            if (!this.isAdmin) {
-                console.log("Mi Agrupacion — usuario no es admin del vault");
-            }
-        }
 
         new Setting(containerEl).setHeading().setName("Mi Agrupación");
 
@@ -62,74 +54,57 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
 
         // ── Sectores ──
         new Setting(containerEl).setHeading().setName("Sectores");
+        new Setting(containerEl)
+            .setDesc("Definí los sectores de tu agrupación. Se sincronizan con Supabase.");
 
-        if (this.isAdmin) {
-            new Setting(containerEl)
-                .setDesc("Definí los sectores de tu agrupación. Se sincronizan con Supabase.");
+        const chipsContainer = containerEl.createDiv({ cls: "mi-agrupacion-sectores-chips" });
+        const inputRow = containerEl.createDiv();
+        inputRow.setCssStyles({ display: "flex", gap: "8px", marginBottom: "8px" });
 
-            const chipsContainer = containerEl.createDiv({ cls: "mi-agrupacion-sectores-chips" });
-            const inputRow = containerEl.createDiv();
-            inputRow.setCssStyles({ display: "flex", gap: "8px", marginBottom: "8px" });
+        const input = inputRow.createEl("input", {
+            type: "text",
+            placeholder: "Nombre del sector",
+        });
+        input.setCssStyles({ flex: "1" });
 
-            const input = inputRow.createEl("input", {
-                type: "text",
-                placeholder: "Nombre del sector",
-            });
-            input.setCssStyles({ flex: "1" });
-
-            const renderChips = () => {
-                chipsContainer.empty();
-                for (const sector of this.settings.sectores) {
-                    const chip = chipsContainer.createEl("span", {
-                        cls: "mi-agrupacion-tag",
-                        text: sector,
-                    });
-                    const x = chip.createEl("span", { text: " ×" });
-                        x.setCssStyles({ cursor: "pointer" });
-                    x.addEventListener("click", () => {
-                        this.settings.sectores = this.settings.sectores.filter(
-                            (s) => s !== sector
-                        );
-                        void this.saveAndSyncSectores();
-                        renderChips();
-                    });
-                }
-            };
-
-            const addSector = () => {
-                const val = input.value.trim();
-                if (!val || this.settings.sectores.includes(val)) return;
-                this.settings.sectores = [...this.settings.sectores, val];
-                input.value = "";
-                void this.saveAndSyncSectores();
-                renderChips();
-            };
-
-            const addBtn = inputRow.createEl("button", { text: "Agregar" });
-            addBtn.addEventListener("click", addSector);
-            input.addEventListener("keydown", (e) => {
-                if (e.key === "Enter") {
-                    e.preventDefault();
-                    addSector();
-                }
-            });
-
-            renderChips();
-        } else {
-            const chipsContainer = containerEl.createDiv({ cls: "mi-agrupacion-sectores-chips" });
+        const renderChips = () => {
+            chipsContainer.empty();
             for (const sector of this.settings.sectores) {
-                chipsContainer.createEl("span", {
+                const chip = chipsContainer.createEl("span", {
                     cls: "mi-agrupacion-tag",
                     text: sector,
                 });
-            }
-            if (this.settings.sectores.length === 0) {
-                containerEl.createEl("p", {
-                    text: "Los sectores se sincronizan desde el administrador del vault.",
-                    cls: "setting-item-description",
+                const x = chip.createEl("span", { text: " ×" });
+                    x.setCssStyles({ cursor: "pointer" });
+                x.addEventListener("click", () => {
+                    this.settings.sectores = this.settings.sectores.filter(
+                        (s) => s !== sector
+                    );
+                    void this.saveAndSyncSectores();
+                    renderChips();
                 });
             }
-        }
+        };
+
+        const addSector = () => {
+            const val = input.value.trim();
+            if (!val || this.settings.sectores.includes(val)) return;
+            this.settings.sectores = [...this.settings.sectores, val];
+            input.value = "";
+            void this.saveAndSyncSectores();
+            renderChips();
+        };
+
+        const addBtn = inputRow.createEl("button", { text: "Agregar" });
+        addBtn.addEventListener("click", addSector);
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                addSector();
+            }
+        });
+
+        renderChips();
 
         new Setting(containerEl)
             .setName("Carpeta base")
@@ -273,7 +248,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                         void (async () => {
                             this.settings.vaultId = generateId();
                             await this.saveFn();
-                            await this.render();
+                            this.render();
                         })();
                     })
                 );
@@ -294,7 +269,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                             this.settings.authEmail = "";
                             this.settings.authRefreshToken = "";
                             await this.saveFn();
-                            await this.render();
+                            this.render();
                         })();
                     })
                 );
@@ -325,18 +300,22 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                     })
                 );
 
-            if (this.isAdmin) {
-                new Setting(containerEl)
-                    .setName("Limpiar Supabase")
-                    .setDesc("Borra todos los datos remotos y vuelve a subir desde cero")
-                    .addButton((btn) =>
-                        btn.setButtonText("Limpiar y resubir").setDestructive().onClick(() => {
-                            if (this.plugin.syncManager) {
-                                void this.plugin.syncManager.clearAndResync();
-                            }
-                        })
-                    );
-            }
+            new Setting(containerEl)
+                .setName("Limpiar Supabase")
+                .setDesc("Borra todos los datos remotos y vuelve a subir desde cero")
+                .addButton((btn) =>
+                    btn.setButtonText("Limpiar y resubir").setDestructive().onClick(() => { void (async () => {
+                        if (!await isVaultAdmin(this.settings.vaultId)) {
+                            new Notice("Solo el administrador del vault puede hacer esto");
+                            return;
+                        }
+                        if (this.plugin.syncManager) {
+                            void this.plugin.syncManager.clearAndResync();
+                        } else {
+                            new Notice("Sync no inicializado. ¿Sesión expirada?");
+                        }
+                    })(); })
+                );
         } else {
             new Setting(containerEl)
                 .setName("Cuenta")
