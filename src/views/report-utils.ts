@@ -105,6 +105,6 @@ export function withContextMenu(btn: HTMLElement, openInNewTab: () => void): voi
         menu.addItem((item) =>
             item.setTitle("Abrir en nueva pestaña").onClick(openInNewTab)
         );
-        menu.showAtMouseEvent(e as MouseEvent);
+        menu.showAtMouseEvent(e);
     });
 }

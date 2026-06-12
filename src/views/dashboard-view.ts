@@ -303,14 +303,15 @@ export class DashboardView extends ItemView {
                 if (!folder) await this.app.vault.createFolder(folderPath);
                 await this.app.vault.create(filePath, markdown);
             }
-            await this.app.workspace.getLeaf(false).openFile(
-                this.app.vault.getAbstractFileByPath(filePath) as TFile
-            );
+            const file = this.app.vault.getAbstractFileByPath(filePath);
+            if (file instanceof TFile) {
+                await this.app.workspace.getLeaf(false).openFile(file);
+            }
             const msg = Platform.isMobile
                 ? "Informe generado. ... → Export to PDF"
                 : "Informe generado. Ctrl+P → Export to PDF";
             new Notice(msg);
-        } catch (e) {
+        } catch (_e) {
             new Notice("Error al guardar el informe");
         }
     }

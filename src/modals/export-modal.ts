@@ -1,7 +1,6 @@
 import { Modal, App } from "obsidian";
-import type { Visita, VidaComunitaria, ProcesoEducativo } from "../types";
 import { CICLOS } from "../types";
-import { DataManager, type ScanResult } from "../data/manager";
+import { DataManager } from "../data/manager";
 import { type CicloInfo } from "../utils/ciclo";
 import {
     formatVisitasExport, formatActividadesExport, formatPExport, shareText,
@@ -147,7 +146,7 @@ export class ExportModal extends Modal {
                     cls: "mi-agrupacion-stat",
                 });
             }
-        } catch (e) {
+        } catch (_e) {
             this.previewEl.empty();
             this.previewEl.createEl("p", { text: "Error al cargar datos", cls: "mi-agrupacion-stat" });
         }
@@ -208,7 +207,7 @@ export class ExportModal extends Modal {
 
             await shareText(text, this.app);
             this.close();
-        } catch (e) {
+        } catch (_e) {
             this.previewEl.empty();
             this.previewEl.createEl("p", { text: "Error al exportar", cls: "mi-agrupacion-stat" });
         }

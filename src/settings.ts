@@ -273,7 +273,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                             new Notice("Sesión expirada. Cerrá sesión y volvé a iniciar.");
                             return;
                         }
-                        const pulled = await this.plugin.syncManager!.pullChanges();
+                        const pulled = await this.plugin.syncManager.pullChanges();
                         if (pulled > 0) {
                             new Notice(`Descargados: ${pulled} registros`);
                             this.plugin.refreshAllViews();
@@ -288,7 +288,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                         .setName("Limpiar Supabase")
                         .setDesc("Borra todos los datos remotos y vuelve a subir desde cero")
                         .addButton((btn) =>
-                            btn.setButtonText("Limpiar y resubir").setWarning().onClick(() => { void (async () => {
+                            btn.setButtonText("Limpiar y resubir").setDestructive().onClick(() => { void (async () => {
                                 if (this.plugin.syncManager) {
                                     void this.plugin.syncManager.clearAndResync();
                                 } else {

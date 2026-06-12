@@ -1,7 +1,4 @@
 import { Modal, App, TFile } from "obsidian";
-import { VisitaModal } from "./visita-modal";
-import { VidaComunitariaModal } from "./vida-comunitaria-modal";
-import { ProcesoEducativoModal } from "./proceso-educativo-modal";
 
 interface RecordEntry {
     file: TFile;
