@@ -126,6 +126,15 @@ export class DataManager {
         return parseFrontmatterFromContent(content).frontmatter;
     }
 
+    async updateRecord(
+        file: TFile,
+        frontmatter: Record<string, unknown>,
+        body: string
+    ): Promise<void> {
+        const content = buildMarkdownNote(frontmatter, body);
+        await this.vault.modify(file, content);
+    }
+
     async deleteRecord(
         file: TFile,
         fotoPath?: string

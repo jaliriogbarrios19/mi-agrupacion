@@ -96,14 +96,12 @@ export default class MiAgrupacionPlugin extends Plugin {
             openVidaComunitaria: () => this.openVidaComunitariaModal(),
             openProcesoEducativo: () => this.openProcesoEducativoModal(),
             openMaestro: () => this.openMaestroModal(),
-            openGeneral: () => this.activateView(VIEW_TYPE_GENERAL),
-            openSRP: () => this.activateView(VIEW_TYPE_RESUMEN_SRP),
-            openCampana: () => this.activateView(VIEW_TYPE_CAMPANA),
+            openStandalone: (type: string) => { void this.activateView(type); },
         };
 
         this.registerView(
             VIEW_TYPE_DASHBOARD,
-            (leaf) => new DashboardView(leaf, this.settings, callbacks)
+            (leaf) => new DashboardView(leaf, this.settings, this.dataManager, callbacks)
         );
         this.registerView(
             VIEW_TYPE_GENERAL,

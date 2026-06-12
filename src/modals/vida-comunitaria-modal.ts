@@ -1,15 +1,19 @@
-import { App, Modal, Setting, Notice, type TextComponent } from "obsidian";
+import { App, Modal, Setting, Notice, type TextComponent, TFile } from "obsidian";
 import { DataManager } from "../data/manager";
 import { MaestroSuggest } from "./maestro-suggest";
 import { pickFile, renderPreview } from "../utils/foto";
 import { detectarCiclo } from "../utils/ciclo";
 import { formatDate, generateId, parseDate } from "../utils/date";
 import { PromptModal } from "../utils/prompt-modal";
-import { TIPOS_ACTIVIDAD, type Maestro } from "../types";
+import { ConfirmModal } from "../utils/confirm";
+import { formatVidaComunitariaForShare, shareText } from "../utils/share";
+import { TIPOS_ACTIVIDAD, type Maestro, type VidaComunitaria } from "../types";
+import { vidaComunitariaTemplate } from "../data/templates";
 
 export class VidaComunitariaModal extends Modal {
     private dataManager: DataManager;
     private onSaved: () => void;
+    private editFile: TFile | null = null;
     private maestros: Maestro[] = [];
     private anioEtiqueta: string;
     private ciclo: string;
@@ -33,11 +37,13 @@ export class VidaComunitariaModal extends Modal {
     constructor(
         app: App,
         dataManager: DataManager,
-        onSaved: () => void
+        onSaved: () => void,
+        editFile?: TFile,
     ) {
         super(app);
         this.dataManager = dataManager;
         this.onSaved = onSaved;
+        this.editFile = editFile ?? null;
         const sectores = this.dataManager.getSectores();
         this.sector = sectores.length > 0 ? sectores[0] : "";
         const now = new Date();
@@ -51,7 +57,27 @@ export class VidaComunitariaModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
         contentEl.addClass("mi-agrupacion-modal");
-        contentEl.createEl("h3", { text: "Nueva Actividad Comunitaria" });
+        const isEditing = !!this.editFile;
+        contentEl.createEl("h3", { text: isEditing ? "Editar Actividad Comunitaria" : "Nueva Actividad Comunitaria" });
+
+        if (isEditing) {
+            const data = await this.dataManager.readRecord(this.editFile!);
+            this.fechaStr = String(data.fecha || this.fechaStr);
+            this.sector = String(data.sector || this.sector);
+            this.tipoActividad = String(data.tipo_actividad || TIPOS_ACTIVIDAD[0]);
+            this.nombreEvento = String(data.nombre_evento || "");
+            this.asistBahais = (data.asist_bahais as string[]) || [];
+            this.asistSimpatizantes = (data.asist_simpatizantes as string[]) || [];
+            this.reportado = String(data.reportado_por || "");
+            this.fotoPath = String(data.foto_actividad || "");
+            this.descripcion = String(data.descripcion_actividad || "");
+            const parsed = parseDate(this.fechaStr);
+            if (!isNaN(parsed.getTime())) {
+                const d = detectarCiclo(parsed);
+                this.anioEtiqueta = d.anioEtiqueta;
+                this.ciclo = d.ciclo;
+            }
+        }
 
         this.maestros = (await this.dataManager.scanMaestros()).map(
             (m) => m.data
@@ -275,7 +301,7 @@ export class VidaComunitariaModal extends Modal {
         const cancelBtn = actions.createEl("button", { text: "Cancelar" });
         cancelBtn.addEventListener("click", () => this.close());
         const saveBtn = actions.createEl("button", {
-            text: "Guardar",
+            text: this.editFile ? "Actualizar" : "Guardar",
             cls: "mod-cta",
         });
         saveBtn.addEventListener("click", () => { void this.guardar(); });
@@ -288,7 +314,7 @@ export class VidaComunitariaModal extends Modal {
         }
 
         const frontmatter: Record<string, unknown> = {
-            id: generateId(),
+            id: this.editFile ? "" : generateId(),
             fecha: this.fechaStr,
             sector: this.sector,
             ciclo: this.ciclo,
@@ -303,12 +329,20 @@ export class VidaComunitariaModal extends Modal {
                 this.asistBahais.length + this.asistSimpatizantes.length,
         };
 
-        await this.dataManager.saveVidaComunitaria(
-            frontmatter,
-            this.anioEtiqueta,
-            this.ciclo
-        );
-        new Notice("Actividad registrada correctamente");
+        if (this.editFile) {
+            const body = vidaComunitariaTemplate(frontmatter as unknown as VidaComunitaria);
+            await this.dataManager.updateRecord(this.editFile, frontmatter, body);
+            new Notice("Actividad actualizada correctamente");
+        } else {
+            await this.dataManager.saveVidaComunitaria(
+                frontmatter,
+                this.anioEtiqueta,
+                this.ciclo
+            );
+            new Notice("Actividad registrada correctamente");
+        }
+        const confirmed = await new ConfirmModal(this.app, "¿Deseas compartir este registro?", "Solo guardar", "Compartir").show();
+        if (confirmed) await shareText(formatVidaComunitariaForShare(frontmatter), this.app);
         this.onSaved();
         this.close();
     }

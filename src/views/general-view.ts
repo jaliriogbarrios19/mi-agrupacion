@@ -1,249 +1,113 @@
-import { ItemView, WorkspaceLeaf } from "obsidian";
+import { ItemView, WorkspaceLeaf, TFile } from "obsidian";
 import type { MiAgrupacionSettings, Visita, VidaComunitaria, ProcesoEducativo } from "../types";
-import { VIEW_TYPE_GENERAL, CICLOS } from "../types";
+import { VIEW_TYPE_GENERAL } from "../types";
 import { DataManager, type ScanResult } from "../data/manager";
-import { detectarCiclo } from "../utils/ciclo";
-import { estimarHogares } from "../utils/hogares";
 import { RecordListModal } from "../modals/record-list-modal";
-
-interface CicloInfo {
-    anioEtiqueta: string;
-    ciclo: string;
-}
+import { PersonListModal } from "../modals/person-list-modal";
+import { ExportModal } from "../modals/export-modal";
+import { VisitaModal } from "../modals/visita-modal";
+import { VidaComunitariaModal } from "../modals/vida-comunitaria-modal";
+import { ProcesoEducativoModal } from "../modals/proceso-educativo-modal";
+import { estimarHogares } from "../utils/hogares";
+import { detectarCiclo, type CicloInfo } from "../utils/ciclo";
+import {
+    renderCicloSelector, renderSectorSelector, renderSearchInput,
+    matchesSearch, sortByDateDesc, kpi,
+} from "./report-utils";
 
 export class GeneralView extends ItemView {
     private settings: MiAgrupacionSettings;
     private dataManager: DataManager;
     private currentCiclo: CicloInfo;
     private selectedSector = "Todos los sectores";
+    private searchQuery = "";
+    private searchCleanup: (() => void) | null = null;
 
-    constructor(
-        leaf: WorkspaceLeaf,
-        settings: MiAgrupacionSettings,
-        dataManager: DataManager
-    ) {
+    constructor(leaf: WorkspaceLeaf, settings: MiAgrupacionSettings, dataManager: DataManager) {
         super(leaf);
         this.settings = settings;
         this.dataManager = dataManager;
         this.currentCiclo = detectarCiclo(new Date());
     }
 
-    getViewType(): string {
-        return VIEW_TYPE_GENERAL;
-    }
-    getDisplayText(): string {
-        return "General";
-    }
-    getIcon(): string {
-        return "bar-chart-2";
-    }
+    getViewType(): string { return VIEW_TYPE_GENERAL; }
+    getDisplayText(): string { return "General"; }
+    getIcon(): string { return "bar-chart-2"; }
 
-    async onOpen(): Promise<void> {
-        await this.render();
-    }
+    async onOpen(): Promise<void> { await this.render(); }
 
     async render(): Promise<void> {
+        if (this.searchCleanup) { this.searchCleanup(); this.searchCleanup = null; }
         const { contentEl } = this;
         contentEl.empty();
         contentEl.addClass("mi-agrupacion-view");
-
         contentEl.createEl("h3", { text: "Vista General" });
-        const selectors = contentEl.createDiv({ cls: "mi-agrupacion-selectors" });
-        this.renderCicloSelector(selectors);
-        this.renderSectorSelector(selectors);
-
-        let data: {
-            visitas: ScanResult<Visita>[];
-            vidaComunitaria: ScanResult<VidaComunitaria>[];
-            procesoEducativo: ScanResult<ProcesoEducativo>[];
-        };
+        const exportBtn = contentEl.createEl("button", { text: "📤 Exportar", cls: "mi-agrupacion-dash-btn" });
+        exportBtn.addEventListener("click", () => {
+            new ExportModal(this.app, this.dataManager, this.currentCiclo, this.selectedSector).open();
+        });
+        const sel = contentEl.createDiv({ cls: "mi-agrupacion-selectors" });
+        renderCicloSelector(sel, this.currentCiclo, (c) => { this.currentCiclo = c; void this.render(); });
+        renderSectorSelector(sel, this.dataManager.getSectores(), this.selectedSector,
+            (s) => { this.selectedSector = s; void this.render(); });
+        this.searchCleanup = renderSearchInput(sel, this.searchQuery, (q) => { this.searchQuery = q; void this.render(); });
+        let data: { visitas: ScanResult<Visita>[]; vidaComunitaria: ScanResult<VidaComunitaria>[]; procesoEducativo: ScanResult<ProcesoEducativo>[] };
         try {
-            data = await this.dataManager.scanAllRecordsInCycle(
-                this.currentCiclo.anioEtiqueta,
-                this.currentCiclo.ciclo
-            );
-        } catch {
-            contentEl.createEl("p", {
-                text: "Error al cargar datos. Verificá que la carpeta de registros exista.",
-                cls: "mi-agrupacion-stat",
-            });
-            return;
+            data = await this.dataManager.scanAllRecordsInCycle(this.currentCiclo.anioEtiqueta, this.currentCiclo.ciclo);
+        } catch (e) {
+            console.error("Mi Agrupacion — scanAllRecordsInCycle:", e);
+            contentEl.createEl("p", { text: "Error al cargar datos.", cls: "mi-agrupacion-stat" }); return;
         }
-
+        const { visitas: v, vidaComunitaria: vc, procesoEducativo: pe } = data;
+        let visitas = v, vidaComunitaria = vc, procesoEducativo = pe;
         if (this.selectedSector !== "Todos los sectores") {
-            data.visitas = data.visitas.filter(
-                (v) => v.data.sector === this.selectedSector
-            );
-            data.vidaComunitaria = data.vidaComunitaria.filter(
-                (v) => v.data.sector === this.selectedSector
-            );
-            data.procesoEducativo = data.procesoEducativo.filter(
-                (p) => p.data.sector === this.selectedSector
-            );
+            visitas = visitas.filter(r => r.data.sector === this.selectedSector);
+            vidaComunitaria = vidaComunitaria.filter(r => r.data.sector === this.selectedSector);
+            procesoEducativo = procesoEducativo.filter(r => r.data.sector === this.selectedSector);
         }
-
-        const totalVisitas = data.visitas.length;
-        const personasVisitadas = new Set(
-            data.visitas.flatMap((v) => v.data.nombres_visitados)
-        ).size;
-        const hogaresEstimados = totalVisitas > 0 ? estimarHogares(data.visitas) : 0;
-
-        const maestrosEnVisitas = new Set<string>();
-        for (const v of data.visitas) {
-            for (const m of v.data.maestros) {
-                maestrosEnVisitas.add(m);
-            }
+        if (this.searchQuery) {
+            const q = this.searchQuery;
+            visitas = visitas.filter(r => matchesSearch(r, q));
+            vidaComunitaria = vidaComunitaria.filter(r => matchesSearch(r, q));
+            procesoEducativo = procesoEducativo.filter(r => matchesSearch(r, q));
         }
-
-        const clasesNinosRecords = data.procesoEducativo.filter(
-            (p) => p.data.tipo === "Clase de Niños"
-        );
-        const gpjRecords = data.procesoEducativo.filter(
-            (p) => p.data.tipo === "GPJ"
-        );
-        const ceRecords = data.procesoEducativo.filter(
-            (p) => p.data.tipo === "Círculo de Estudio"
-        );
-
-        const fiestas19Records = data.vidaComunitaria.filter(
-            (v) => v.data.tipo_actividad === "Fiesta de 19 días"
-        );
-        const diasSagradosRecords = data.vidaComunitaria.filter(
-            (v) => v.data.tipo_actividad === "Día Sagrado"
-        );
-        const otrasActividadesRecords = data.vidaComunitaria.filter(
-            (v) =>
-                v.data.tipo_actividad !== "Fiesta de 19 días" &&
-                v.data.tipo_actividad !== "Día Sagrado"
-        );
-
-        const totalParticipantesVC = data.vidaComunitaria.reduce(
-            (acc, v) => acc + (v.data.numero_participantes || 0),
-            0
-        );
-
+        visitas = sortByDateDesc(visitas);
+        vidaComunitaria = sortByDateDesc(vidaComunitaria);
+        procesoEducativo = sortByDateDesc(procesoEducativo);
+        const tc = (d: ScanResult<Visita | VidaComunitaria | ProcesoEducativo>[]) =>
+            d.map(r => ({ file: r.file, data: r.data as unknown as Record<string, unknown> }));
+        const totalV = visitas.length;
+        const personas = new Set(visitas.flatMap(r => r.data.nombres_visitados)).size;
+        const hogares = totalV > 0 ? estimarHogares(visitas) : 0;
+        const mSet = new Set(visitas.flatMap(r => r.data.maestros));
+        const fiestas = vidaComunitaria.filter(r => r.data.tipo_actividad === "Fiesta de 19 días");
+        const sagrados = vidaComunitaria.filter(r => r.data.tipo_actividad === "Día Sagrado");
+        const otras = vidaComunitaria.filter(r => r.data.tipo_actividad !== "Fiesta de 19 días" && r.data.tipo_actividad !== "Día Sagrado");
+        const participantesUnicos = new Set(fiestas.flatMap(v => [...(v.data.asist_bahais || []), ...(v.data.asist_simpatizantes || [])]));
+        const clases = procesoEducativo.filter(r => r.data.tipo === "Clase de Niños");
+        const gpj = procesoEducativo.filter(r => r.data.tipo === "GPJ");
+        const ce = procesoEducativo.filter(r => r.data.tipo === "Círculo de Estudio");
         const grid = contentEl.createDiv({ cls: "mi-agrupacion-kpi-grid" });
-
-        this.kpi(grid, "Visitas realizadas", String(totalVisitas), () => {
-            new RecordListModal(this.app, "Visitas realizadas",
-                data.visitas.map(v => ({ file: v.file, data: v.data as unknown as Record<string, unknown> })),
-                ["fecha", "nombres_visitados", "sector"]
-            ).open();
-        });
-        this.kpi(grid, "Personas visitadas", String(personasVisitadas), () => {
-            new RecordListModal(this.app, "Personas visitadas",
-                data.visitas.map(v => ({ file: v.file, data: v.data as unknown as Record<string, unknown> })),
-                ["fecha", "nombres_visitados", "sector"]
-            ).open();
-        });
-        this.kpi(grid, "~Hogares visitados", String(hogaresEstimados));
-        this.kpi(grid, "Maestros participantes", String(maestrosEnVisitas.size), () => {
-            new RecordListModal(this.app, "Maestros participantes",
-                data.visitas.map(v => ({ file: v.file, data: v.data as unknown as Record<string, unknown> })),
-                ["fecha", "maestros", "sector"]
-            ).open();
-        });
-        this.kpi(grid, "Fiestas de 19 días", String(fiestas19Records.length), () => {
-            new RecordListModal(this.app, "Fiestas de 19 días",
-                fiestas19Records.map(v => ({ file: v.file, data: v.data as unknown as Record<string, unknown> })),
-                ["fecha", "numero_participantes", "sector"]
-            ).open();
-        });
-        this.kpi(grid, "Días Sagrados", String(diasSagradosRecords.length), () => {
-            new RecordListModal(this.app, "Días Sagrados",
-                diasSagradosRecords.map(v => ({ file: v.file, data: v.data as unknown as Record<string, unknown> })),
-                ["fecha", "numero_participantes", "sector"]
-            ).open();
-        });
-        this.kpi(grid, "Otras actividades", String(otrasActividadesRecords.length), () => {
-            new RecordListModal(this.app, "Otras actividades",
-                otrasActividadesRecords.map(v => ({ file: v.file, data: v.data as unknown as Record<string, unknown> })),
-                ["fecha", "tipo_actividad", "numero_participantes", "sector"]
-            ).open();
-        });
-        this.kpi(grid, "Participantes en actividades", String(totalParticipantesVC), () => {
-            new RecordListModal(this.app, "Participantes en actividades",
-                data.vidaComunitaria.map(v => ({ file: v.file, data: v.data as unknown as Record<string, unknown> })),
-                ["fecha", "tipo_actividad", "numero_participantes", "sector"]
-            ).open();
-        });
-        this.kpi(grid, "Clases de niños",
-            clasesNinosRecords.length > 0 ? `${clasesNinosRecords.length} (activas)` : "0", () => {
-            new RecordListModal(this.app, "Clases de niños",
-                clasesNinosRecords.map(p => ({ file: p.file, data: p.data as unknown as Record<string, unknown> })),
-                ["fecha", "facilitador", "participantes", "sector"]
-            ).open();
-        });
-        this.kpi(grid, "GPJ",
-            gpjRecords.length > 0 ? `${gpjRecords.length} (activos)` : "0", () => {
-            new RecordListModal(this.app, "GPJ",
-                gpjRecords.map(p => ({ file: p.file, data: p.data as unknown as Record<string, unknown> })),
-                ["fecha", "facilitador", "participantes", "sector"]
-            ).open();
-        });
-        this.kpi(grid, "CE",
-            ceRecords.length > 0 ? `${ceRecords.length} (activas)` : "0", () => {
-            new RecordListModal(this.app, "Círculos de Estudio",
-                ceRecords.map(p => ({ file: p.file, data: p.data as unknown as Record<string, unknown> })),
-                ["fecha", "facilitador", "participantes", "sector"]
-            ).open();
-        });
+        kpi(grid, "Visitas realizadas", String(totalV), () => new RecordListModal(this.app, "Visitas", tc(visitas), (f) => this.openEditModal(f, "visita")).open());
+        kpi(grid, "Personas visitadas", String(personas), () => new RecordListModal(this.app, "Personas", tc(visitas), (f) => this.openEditModal(f, "visita")).open());
+        kpi(grid, "~Hogares visitados", String(hogares));
+        kpi(grid, "Maestros participantes", String(mSet.size), () => new PersonListModal(this.app, "Maestros participantes", [...mSet].sort()).open());
+        kpi(grid, "Fiestas de 19 días", String(fiestas.length), () => new RecordListModal(this.app, "Fiestas", tc(fiestas), (f) => this.openEditModal(f, "vc")).open());
+        kpi(grid, "Días Sagrados", String(sagrados.length), () => new RecordListModal(this.app, "Días Sagrados", tc(sagrados), (f) => this.openEditModal(f, "vc")).open());
+        kpi(grid, "Otras actividades", String(otras.length), () => new RecordListModal(this.app, "Otras", tc(otras), (f) => this.openEditModal(f, "vc")).open());
+        kpi(grid, "Participantes en F19D", String(participantesUnicos.size), () => new PersonListModal(this.app, "Participantes en Fiestas de 19 días", [...participantesUnicos].sort()).open());
+        kpi(grid, "Clases de niños", clases.length > 0 ? `${clases.length} (activas)` : "0", () => new RecordListModal(this.app, "Clases", tc(clases), (f) => this.openEditModal(f, "pe")).open());
+        kpi(grid, "GPJ", gpj.length > 0 ? `${gpj.length} (activos)` : "0", () => new RecordListModal(this.app, "GPJ", tc(gpj), (f) => this.openEditModal(f, "pe")).open());
+        kpi(grid, "CE", ce.length > 0 ? `${ce.length} (activas)` : "0", () => new RecordListModal(this.app, "CE", tc(ce), (f) => this.openEditModal(f, "pe")).open());
     }
 
-    private kpi(container: HTMLElement, label: string, value: string, onClick?: () => void): void {
-        const card = container.createDiv({ cls: "mi-agrupacion-kpi-card" });
-        card.createDiv({ cls: "mi-agrupacion-kpi-value", text: value });
-        card.createDiv({ cls: "mi-agrupacion-kpi-label", text: label });
-        if (onClick) {
-            card.setCssStyles({ cursor: "pointer" });
-            card.addEventListener("click", onClick);
-        }
-    }
+    updateSettings(settings: MiAgrupacionSettings): void { this.settings = settings; }
+    async onClose(): Promise<void> { this.contentEl.empty(); }
 
-    private renderCicloSelector(container: HTMLElement): void {
-        container.createSpan({ text: "Ciclo:" });
-        const select = container.createEl("select");
-
-        for (const c of CICLOS) {
-            const opt = select.createEl("option", { text: c });
-            opt.value = c;
-            if (c === this.currentCiclo.ciclo) opt.selected = true;
-        }
-
-        select.addEventListener("change", () => {
-            this.currentCiclo = {
-                anioEtiqueta: this.currentCiclo.anioEtiqueta,
-                ciclo: select.value,
-            };
-            void this.render();
-        });
-    }
-
-    private renderSectorSelector(container: HTMLElement): void {
-        container.createEl("span", { text: "Sector:" });
-        const select = container.createEl("select");
-
-        const optTodos = select.createEl("option", { text: "Todos los sectores" });
-        optTodos.value = "Todos los sectores";
-        optTodos.selected = this.selectedSector === "Todos los sectores";
-
-        for (const s of this.dataManager.getSectores()) {
-            const opt = select.createEl("option", { text: s });
-            opt.value = s;
-            if (s === this.selectedSector) opt.selected = true;
-        }
-
-        select.addEventListener("change", () => {
-            this.selectedSector = select.value;
-            void this.render();
-        });
-    }
-
-    updateSettings(settings: MiAgrupacionSettings): void {
-        this.settings = settings;
-    }
-
-    async onClose(): Promise<void> {
-        this.contentEl.empty();
+    private openEditModal(file: TFile, kind: "visita" | "vc" | "pe"): void {
+        const onSaved = () => { void this.render(); };
+        if (kind === "visita") new VisitaModal(this.app, this.dataManager, onSaved, file).open();
+        else if (kind === "vc") new VidaComunitariaModal(this.app, this.dataManager, onSaved, file).open();
+        else new ProcesoEducativoModal(this.app, this.dataManager, onSaved, file).open();
     }
 }

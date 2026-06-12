@@ -1,18 +1,23 @@
-import { App, Modal, Setting, Notice, type TextComponent } from "obsidian";
+import { App, Modal, Setting, Notice, type TextComponent, TFile } from "obsidian";
 import { DataManager } from "../data/manager";
 import { MaestroSuggest } from "./maestro-suggest";
 import { pickFile, renderPreview } from "../utils/foto";
 import { detectarCiclo } from "../utils/ciclo";
 import { formatDate, generateId, parseDate } from "../utils/date";
 import { PromptModal } from "../utils/prompt-modal";
+import { ConfirmModal } from "../utils/confirm";
+import { formatProcesoEducativoForShare, shareText } from "../utils/share";
 import {
     TIPOS_PROCESO_EDUCATIVO,
     type Maestro,
+    type ProcesoEducativo,
 } from "../types";
+import { procesoEducativoTemplate } from "../data/templates";
 
 export class ProcesoEducativoModal extends Modal {
     private dataManager: DataManager;
     private onSaved: () => void;
+    private editFile: TFile | null = null;
     private maestros: Maestro[] = [];
     private anioEtiqueta: string;
     private ciclo: string;
@@ -36,11 +41,13 @@ export class ProcesoEducativoModal extends Modal {
     constructor(
         app: App,
         dataManager: DataManager,
-        onSaved: () => void
+        onSaved: () => void,
+        editFile?: TFile,
     ) {
         super(app);
         this.dataManager = dataManager;
         this.onSaved = onSaved;
+        this.editFile = editFile ?? null;
         const sectores = this.dataManager.getSectores();
         this.sector = sectores.length > 0 ? sectores[0] : "";
         const now = new Date();
@@ -54,9 +61,28 @@ export class ProcesoEducativoModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
         contentEl.addClass("mi-agrupacion-modal");
+        const isEditing = !!this.editFile;
         contentEl.createEl("h3", {
-            text: "Nuevo Registro - Proceso Educativo",
+            text: isEditing ? "Editar Registro - Proceso Educativo" : "Nuevo Registro - Proceso Educativo",
         });
+
+        if (isEditing) {
+            const data = await this.dataManager.readRecord(this.editFile!);
+            this.fechaStr = String(data.fecha || this.fechaStr);
+            this.sector = String(data.sector || this.sector);
+            this.tipo = String(data.tipo || TIPOS_PROCESO_EDUCATIVO[0]);
+            this.participantes = (data.participantes as string[]) || [];
+            this.leccion = String(data.leccion || "");
+            this.libro = String(data.libro || "");
+            this.reportado = String(data.reportado_por || "");
+            this.fotoPath = String(data.foto_actividad || "");
+            const parsed = parseDate(this.fechaStr);
+            if (!isNaN(parsed.getTime())) {
+                const d = detectarCiclo(parsed);
+                this.anioEtiqueta = d.anioEtiqueta;
+                this.ciclo = d.ciclo;
+            }
+        }
 
         this.maestros = (await this.dataManager.scanMaestros()).map(
             (m) => m.data
@@ -252,7 +278,7 @@ export class ProcesoEducativoModal extends Modal {
         const cancelBtn = actions.createEl("button", { text: "Cancelar" });
         cancelBtn.addEventListener("click", () => this.close());
         const saveBtn = actions.createEl("button", {
-            text: "Guardar",
+            text: this.editFile ? "Actualizar" : "Guardar",
             cls: "mod-cta",
         });
         saveBtn.addEventListener("click", () => { void this.guardar(); });
@@ -271,7 +297,7 @@ export class ProcesoEducativoModal extends Modal {
         }
 
         const frontmatter: Record<string, unknown> = {
-            id: generateId(),
+            id: this.editFile ? "" : generateId(),
             fecha: this.fechaStr,
             sector: this.sector,
             ciclo: this.ciclo,
@@ -283,12 +309,20 @@ export class ProcesoEducativoModal extends Modal {
             foto_actividad: this.fotoPath,
         };
 
-        await this.dataManager.saveProcesoEducativo(
-            frontmatter,
-            this.anioEtiqueta,
-            this.ciclo
-        );
-        new Notice("Registro guardado correctamente");
+        if (this.editFile) {
+            const body = procesoEducativoTemplate(frontmatter as unknown as ProcesoEducativo);
+            await this.dataManager.updateRecord(this.editFile, frontmatter, body);
+            new Notice("Registro actualizado correctamente");
+        } else {
+            await this.dataManager.saveProcesoEducativo(
+                frontmatter,
+                this.anioEtiqueta,
+                this.ciclo
+            );
+            new Notice("Registro guardado correctamente");
+        }
+        const confirmed = await new ConfirmModal(this.app, "¿Deseas compartir este registro?", "Solo guardar", "Compartir").show();
+        if (confirmed) await shareText(formatProcesoEducativoForShare(frontmatter), this.app);
         this.onSaved();
         this.close();
     }

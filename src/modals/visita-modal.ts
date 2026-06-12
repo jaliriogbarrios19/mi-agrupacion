@@ -1,18 +1,23 @@
-import { App, Modal, Setting, Notice, type TextComponent } from "obsidian";
+import { App, Modal, Setting, Notice, type TextComponent, TFile } from "obsidian";
 import { DataManager } from "../data/manager";
 import { MaestroSuggest } from "./maestro-suggest";
 import { pickFile, renderPreview } from "../utils/foto";
 import { detectarCiclo } from "../utils/ciclo";
 import { formatDate, generateId, parseDate } from "../utils/date";
 import { PromptModal } from "../utils/prompt-modal";
+import { ConfirmModal } from "../utils/confirm";
+import { formatVisitaForShare, shareText } from "../utils/share";
 import {
     CONDICIONES,
     type Maestro,
+    type Visita,
 } from "../types";
+import { visitaTemplate } from "../data/templates";
 
 export class VisitaModal extends Modal {
     private dataManager: DataManager;
     private onSaved: () => void;
+    private editFile: TFile | null = null;
     private maestros: Maestro[] = [];
     private maestrosSeleccionados: string[] = [];
     private fotoPath = "";
@@ -40,11 +45,13 @@ export class VisitaModal extends Modal {
     constructor(
         app: App,
         dataManager: DataManager,
-        onSaved: () => void
+        onSaved: () => void,
+        editFile?: TFile,
     ) {
         super(app);
         this.dataManager = dataManager;
         this.onSaved = onSaved;
+        this.editFile = editFile ?? null;
         const sectores = this.dataManager.getSectores();
         this.sector = sectores.length > 0 ? sectores[0] : "";
         const now = new Date();
@@ -59,7 +66,31 @@ export class VisitaModal extends Modal {
         contentEl.empty();
         contentEl.addClass("mi-agrupacion-modal");
 
-        contentEl.createEl("h3", { text: "Nuevo Registro de Visita" });
+        const isEditing = !!this.editFile;
+        contentEl.createEl("h3", { text: isEditing ? "Editar Visita" : "Nuevo Registro de Visita" });
+
+        if (isEditing) {
+            const data = await this.dataManager.readRecord(this.editFile!);
+            this.fechaStr = String(data.fecha || this.fechaStr);
+            this.sector = String(data.sector || this.sector);
+            this.nombresVisitados = (data.nombres_visitados as string[]) || [];
+            this.condicion = String(data.condicion || CONDICIONES[0]);
+            this.hogarNuevo = !!data.hogar_nuevo;
+            this.huboOracion = !!data.hubo_oracion;
+            this.campanaExpansion = !!data.campana_expansion;
+            this.maestrosSeleccionados = (data.maestros as string[]) || [];
+            this.proposito = String(data.proposito_visita || "");
+            this.resumen = String(data.resumen || "");
+            this.reportado = String(data.reportado_por || "");
+            this.fotoPath = String(data.foto_actividad || "");
+            this.personasVisitadas = Number(data.personas_visitadas) || 1;
+            const parsed = parseDate(this.fechaStr);
+            if (!isNaN(parsed.getTime())) {
+                const d = detectarCiclo(parsed);
+                this.anioEtiqueta = d.anioEtiqueta;
+                this.ciclo = d.ciclo;
+            }
+        }
 
         this.maestros = (await this.dataManager.scanMaestros()).map(
             (m) => m.data
@@ -375,7 +406,7 @@ export class VisitaModal extends Modal {
         cancelBtn.addEventListener("click", () => this.close());
 
         const saveBtn = actions.createEl("button", {
-            text: "Guardar",
+            text: this.editFile ? "Actualizar" : "Guardar",
             cls: "mod-cta",
         });
         saveBtn.addEventListener("click", () => { void this.guardar(); });
@@ -400,7 +431,7 @@ export class VisitaModal extends Modal {
         }
 
         const frontmatter: Record<string, unknown> = {
-            id_visita: generateId(),
+            id_visita: this.editFile ? "" : generateId(),
             fecha: this.fechaStr,
             sector: this.sector,
             ciclo: this.ciclo,
@@ -417,12 +448,20 @@ export class VisitaModal extends Modal {
             personas_visitadas: this.personasVisitadas,
         };
 
-        await this.dataManager.saveVisita(
-            frontmatter,
-            this.anioEtiqueta,
-            this.ciclo
-        );
-        new Notice("Visita registrada correctamente");
+        if (this.editFile) {
+            const body = visitaTemplate(frontmatter as unknown as Visita);
+            await this.dataManager.updateRecord(this.editFile, frontmatter, body);
+            new Notice("Visita actualizada correctamente");
+        } else {
+            await this.dataManager.saveVisita(
+                frontmatter,
+                this.anioEtiqueta,
+                this.ciclo
+            );
+            new Notice("Visita registrada correctamente");
+        }
+        const confirmed = await new ConfirmModal(this.app, "¿Deseas compartir este registro?", "Solo guardar", "Compartir").show();
+        if (confirmed) await shareText(formatVisitaForShare(frontmatter), this.app);
         this.onSaved();
         this.close();
     }

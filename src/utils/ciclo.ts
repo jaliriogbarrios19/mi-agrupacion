@@ -1,6 +1,6 @@
 import { CICLOS } from "../types";
 
-interface CicloInfo {
+export interface CicloInfo {
     anioEtiqueta: string;
     ciclo: string;
 }

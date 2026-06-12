@@ -4,11 +4,15 @@ export class ConfirmModal extends Modal {
     message: string;
     result: boolean;
     private resolve: ((value: boolean) => void) | null = null;
+    private cancelLabel: string;
+    private confirmLabel: string;
 
-    constructor(app: App, message: string) {
+    constructor(app: App, message: string, cancelLabel = "Cancelar", confirmLabel = "Confirmar") {
         super(app);
         this.message = message;
         this.result = false;
+        this.cancelLabel = cancelLabel;
+        this.confirmLabel = confirmLabel;
     }
 
     onOpen(): void {
@@ -21,7 +25,7 @@ export class ConfirmModal extends Modal {
         });
 
         const cancelBtn = buttonContainer.createEl("button", {
-            text: "Cancelar",
+            text: this.cancelLabel,
         });
         cancelBtn.addEventListener("click", () => {
             this.result = false;
@@ -30,7 +34,7 @@ export class ConfirmModal extends Modal {
         });
 
         const confirmBtn = buttonContainer.createEl("button", {
-            text: "Confirmar",
+            text: this.confirmLabel,
             cls: "mod-cta",
         });
         confirmBtn.addEventListener("click", () => {
