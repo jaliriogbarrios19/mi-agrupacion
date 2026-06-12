@@ -50,6 +50,19 @@ export interface ProcesoEducativo {
     foto_actividad: string;
 }
 
+export interface Reunion {
+    id: string;
+    fecha: string;
+    sector: string;
+    ciclo: string;
+    tipo_reunion: string;
+    nombre_custom: string;
+    asist_bahais: string[];
+    resumen_publico: string;
+    reportado_por: string;
+    foto_actividad: string;
+}
+
 export interface MiAgrupacionSettings {
     nombreAgrupacion: string;
     carpetaBase: string;
@@ -97,6 +110,18 @@ export const TIPOS_PROCESO_EDUCATIVO = [
     "GPJ",
 ];
 
+export const TIPOS_REUNION = [
+    "AEL",
+    "Coordinación GPJ",
+    "Coordinación CN",
+    "Coordinación CE",
+    "CEA",
+    "Punto Medio",
+    "Cierre de Perfil",
+    "Reflexión",
+    "Otro",
+];
+
 export const CONDICIONES = [
     "Bahá'í",
     "Simpatizante",
@@ -106,3 +131,4 @@ export const VIEW_TYPE_DASHBOARD = "mi-agrupacion-dashboard";
 export const VIEW_TYPE_GENERAL = "mi-agrupacion-general";
 export const VIEW_TYPE_RESUMEN_SRP = "mi-agrupacion-resumen-srp";
 export const VIEW_TYPE_CAMPANA = "mi-agrupacion-campana";
+export const VIEW_TYPE_REGISTRO_REUNIONES = "mi-agrupacion-registro-reuniones";

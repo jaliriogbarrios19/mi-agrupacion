@@ -6,35 +6,31 @@ import { detectarCiclo } from "../utils/ciclo";
 import { formatDate, generateId, parseDate } from "../utils/date";
 import { PromptModal } from "../utils/prompt-modal";
 import { ConfirmModal } from "../utils/confirm";
-import { formatVidaComunitariaForShare, shareText } from "../utils/share";
-import { TIPOS_ACTIVIDAD, type Maestro, type VidaComunitaria } from "../types";
-import { vidaComunitariaTemplate } from "../data/templates";
-import { renderTagsField, renderTagChips } from "./tags-helpers";
+import { TIPOS_REUNION, type Maestro, type Reunion } from "../types";
+import { reunionTemplate } from "../data/templates";
 
-export class VidaComunitariaModal extends Modal {
+export class ReunionModal extends Modal {
     private dataManager: DataManager;
     private onSaved: () => void;
     private editFile: TFile | null = null;
     private maestros: Maestro[] = [];
+    private maestrosSeleccionados: string[] = [];
+    private fotoPath = "";
+    private fotoPreviewEl: HTMLElement;
     private anioEtiqueta: string;
     private ciclo: string;
     private fechaStr: string;
+    private maestrosContainer: HTMLElement;
+    private reportadoInput: HTMLInputElement;
+    private _cicloText: TextComponent | null = null;
 
     private sector = "";
-    private tipoActividad = TIPOS_ACTIVIDAD[0];
-    private nombreEvento = "";
+    private tipoReunion = TIPOS_REUNION[0];
+    private nombreCustom = "";
     private asistBahais: string[] = [];
-    private asistSimpatizantes: string[] = [];
+    private resumenPublico = "";
     private reportado = "";
-    private fotoPath = "";
-    private descripcion = "";
-
-    private tagsBahaisEl: HTMLElement;
-    private tagsSimpatizantesEl: HTMLElement;
-    private fotoPreviewEl: HTMLElement;
-    private reportadoInput: HTMLInputElement;
-    private maestrosContainer: HTMLElement;
-    private _cicloText: TextComponent | null = null;
+    private customContainer: HTMLElement;
 
     constructor(
         app: App,
@@ -60,19 +56,20 @@ export class VidaComunitariaModal extends Modal {
         contentEl.empty();
         contentEl.addClass("mi-agrupacion-modal");
         const isEditing = !!this.editFile;
-        contentEl.createEl("h3", { text: isEditing ? "Editar Actividad Comunitaria" : "Nueva Actividad Comunitaria" });
+        const titleSetting = new Setting(contentEl);
+        titleSetting.setName(isEditing ? "Editar Reunión" : "Nueva Reunión");
+        titleSetting.setHeading();
 
         if (isEditing) {
             const data = await this.dataManager.readRecord(this.editFile!);
             this.fechaStr = String(data.fecha || this.fechaStr);
             this.sector = String(data.sector || this.sector);
-            this.tipoActividad = String(data.tipo_actividad || TIPOS_ACTIVIDAD[0]);
-            this.nombreEvento = String(data.nombre_evento || "");
+            this.tipoReunion = String(data.tipo_reunion || TIPOS_REUNION[0]);
+            this.nombreCustom = String(data.nombre_custom || "");
             this.asistBahais = (data.asist_bahais as string[]) || [];
-            this.asistSimpatizantes = (data.asist_simpatizantes as string[]) || [];
+            this.resumenPublico = String(data.resumen_publico || "");
             this.reportado = String(data.reportado_por || "");
             this.fotoPath = String(data.foto_actividad || "");
-            this.descripcion = String(data.descripcion_actividad || "");
             const parsed = parseDate(this.fechaStr);
             if (!isNaN(parsed.getTime())) {
                 const d = detectarCiclo(parsed);
@@ -122,54 +119,48 @@ export class VidaComunitariaModal extends Modal {
             });
 
         new Setting(form)
-            .setName("Tipo de actividad")
+            .setName("Tipo de reunión")
             .addDropdown((d) => {
-                TIPOS_ACTIVIDAD.forEach((t) => { d.addOption(t, t); });
-                d.setValue(this.tipoActividad).onChange(
-                    (v) => (this.tipoActividad = v)
-                );
+                TIPOS_REUNION.forEach((t) => { d.addOption(t, t); });
+                d.setValue(this.tipoReunion).onChange((v) => {
+                    this.tipoReunion = v;
+                    this.customContainer.setCssStyles({
+                        display: v === "Otro" ? "block" : "none",
+                    });
+                });
             });
 
-        new Setting(form)
-            .setName("Nombre del evento")
+        this.customContainer = form.createDiv();
+        this.customContainer.setCssStyles({
+            display: this.tipoReunion === "Otro" ? "block" : "none",
+        });
+        new Setting(this.customContainer)
+            .setName("Nombre de la reunión")
             .addText((t) =>
-                t.setPlaceholder("Nombre").onChange(
-                    (v) => (this.nombreEvento = v.trim())
+                t.setPlaceholder("Ej: Reunión de devocionales").setValue(this.nombreCustom).onChange(
+                    (v) => (this.nombreCustom = v.trim())
                 )
             );
 
-        this.renderAsistBahaisField(form);
+        this.renderPresentesField(form);
 
-        renderTagsField(
-            form,
-            "Asist. Simpatizantes",
-            this.asistSimpatizantes,
-            (val) => {
-                this.asistSimpatizantes = val;
-                renderTagChips(
-                    this.tagsSimpatizantesEl,
-                    this.asistSimpatizantes
-                );
-            },
-            (el) => (this.tagsSimpatizantesEl = el)
-        );
+        const resumenSetting = new Setting(form).setName("Resumen público");
+        const resumenArea = resumenSetting.controlEl.createEl("textarea", {
+            placeholder: "Resumen de la reunión...",
+        });
+        resumenArea.setCssStyles({ width: "100%", minHeight: "100px", resize: "vertical" });
+        resumenArea.value = this.resumenPublico;
+        resumenArea.addEventListener("input", () => {
+            this.resumenPublico = resumenArea.value;
+        });
 
         this.renderReportadoField(form);
-
-        new Setting(form)
-            .setName("Descripción")
-            .addTextArea((t) =>
-                t.setPlaceholder("Describe la actividad...").onChange(
-                    (v) => (this.descripcion = v)
-                )
-            );
-
         this.renderFotoField(form);
         this.renderButtons(container);
     }
 
-    private renderAsistBahaisField(container: HTMLElement): void {
-        const setting = new Setting(container).setName("Asist. Bahá'ís");
+    private renderPresentesField(container: HTMLElement): void {
+        const setting = new Setting(container).setName("Presentes");
         const inputWrapper = setting.controlEl.createDiv();
         const inputRow = inputWrapper.createDiv();
 
@@ -186,7 +177,7 @@ export class VidaComunitariaModal extends Modal {
             (nombre, isNew) => {
                 if (!this.asistBahais.includes(nombre)) {
                     this.asistBahais.push(nombre);
-                    this.renderAsistBahaisTags(inputWrapper);
+                    this.renderPresentesTags(inputWrapper);
                 }
                 if (isNew) {
                     void (async () => {
@@ -213,10 +204,10 @@ export class VidaComunitariaModal extends Modal {
         );
 
         this.maestrosContainer = inputWrapper.createDiv();
-        this.renderAsistBahaisTags(inputWrapper);
+        this.renderPresentesTags(inputWrapper);
     }
 
-    private renderAsistBahaisTags(container: HTMLElement): void {
+    private renderPresentesTags(container: HTMLElement): void {
         this.maestrosContainer.empty();
         for (const nombre of this.asistBahais) {
             const tag = this.maestrosContainer.createEl("span", {
@@ -229,7 +220,7 @@ export class VidaComunitariaModal extends Modal {
                 this.asistBahais = this.asistBahais.filter(
                     (m) => m !== nombre
                 );
-                this.renderAsistBahaisTags(container);
+                this.renderPresentesTags(container);
             });
         }
     }
@@ -243,6 +234,7 @@ export class VidaComunitariaModal extends Modal {
         this.reportadoInput.addEventListener("input", () => {
             this.reportado = this.reportadoInput.value.trim();
         });
+
         new MaestroSuggest(
             this.app,
             this.reportadoInput,
@@ -309,8 +301,16 @@ export class VidaComunitariaModal extends Modal {
     }
 
     private async guardar(): Promise<void> {
-        if (!this.nombreEvento) {
-            new Notice("El nombre del evento es obligatorio");
+        if (this.asistBahais.length === 0) {
+            new Notice("Agregá al menos un presente");
+            return;
+        }
+        if (this.tipoReunion === "Otro" && !this.nombreCustom) {
+            new Notice("Especificá el nombre de la reunión");
+            return;
+        }
+        if (!this.reportado) {
+            new Notice("Reportado por es obligatorio");
             return;
         }
 
@@ -319,31 +319,26 @@ export class VidaComunitariaModal extends Modal {
             fecha: this.fechaStr,
             sector: this.sector,
             ciclo: this.ciclo,
-            tipo_actividad: this.tipoActividad,
-            nombre_evento: this.nombreEvento,
+            tipo_reunion: this.tipoReunion,
+            nombre_custom: this.tipoReunion === "Otro" ? this.nombreCustom : "",
             asist_bahais: this.asistBahais,
-            asist_simpatizantes: this.asistSimpatizantes,
+            resumen_publico: this.resumenPublico,
             reportado_por: this.reportado,
             foto_actividad: this.fotoPath,
-            descripcion_actividad: this.descripcion,
-            numero_participantes:
-                this.asistBahais.length + this.asistSimpatizantes.length,
         };
 
         if (this.editFile) {
-            const body = vidaComunitariaTemplate(frontmatter as unknown as VidaComunitaria);
+            const body = reunionTemplate(frontmatter as unknown as Reunion);
             await this.dataManager.updateRecord(this.editFile, frontmatter, body);
-            new Notice("Actividad actualizada correctamente");
+            new Notice("Reunión actualizada correctamente");
         } else {
-            await this.dataManager.saveVidaComunitaria(
+            await this.dataManager.saveReunion(
                 frontmatter,
                 this.anioEtiqueta,
                 this.ciclo
             );
-            new Notice("Actividad registrada correctamente");
+            new Notice("Reunión registrada correctamente");
         }
-        const confirmed = await new ConfirmModal(this.app, "¿Deseas compartir este registro?", "Solo guardar", "Compartir").show();
-        if (confirmed) await shareText(formatVidaComunitariaForShare(frontmatter), this.app);
         this.onSaved();
         this.close();
     }

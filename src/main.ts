@@ -23,6 +23,7 @@ import { VisitaModal } from "./modals/visita-modal";
 import { VidaComunitariaModal } from "./modals/vida-comunitaria-modal";
 import { ProcesoEducativoModal } from "./modals/proceso-educativo-modal";
 import { MaestroModal } from "./modals/maestro-modal";
+import { ReunionModal } from "./modals/reunion-modal";
 import { configure, setSession, isLoggedIn, isSessionExpired, setOnTokenRefresh } from "./supabase/client";
 import { SyncManager } from "./supabase/sync";
 
@@ -96,6 +97,7 @@ export default class MiAgrupacionPlugin extends Plugin {
             openVidaComunitaria: () => this.openVidaComunitariaModal(),
             openProcesoEducativo: () => this.openProcesoEducativoModal(),
             openMaestro: () => this.openMaestroModal(),
+            openReunion: () => this.openReunionModal(),
             openStandalone: (type: string) => { void this.activateView(type); },
         };
 
@@ -161,6 +163,11 @@ export default class MiAgrupacionPlugin extends Plugin {
             callback: () => this.openMaestroModal(),
         });
         this.addCommand({
+            id: "nueva-reunion",
+            name: "Nueva reunión",
+            callback: () => this.openReunionModal(),
+        });
+        this.addCommand({
             id: "sync-now",
             name: "Sincronizar ahora",
             callback: () => {
@@ -193,6 +200,12 @@ export default class MiAgrupacionPlugin extends Plugin {
 
     private openMaestroModal(): void {
         new MaestroModal(this.app, this.dataManager, () =>
+            this.refreshAllViews()
+        ).open();
+    }
+
+    private openReunionModal(): void {
+        new ReunionModal(this.app, this.dataManager, () =>
             this.refreshAllViews()
         ).open();
     }

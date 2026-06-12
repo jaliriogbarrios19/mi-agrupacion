@@ -1,4 +1,4 @@
-import type { Visita, VidaComunitaria, ProcesoEducativo, Maestro } from "../types";
+import type { Visita, VidaComunitaria, ProcesoEducativo, Maestro, Reunion } from "../types";
 
 export function visitaTemplate(data: Visita): string {
     const maestros = data.maestros.map((m) => `  - ${m}`).join("\n");
@@ -76,5 +76,26 @@ export function procesoEducativoTemplate(data: ProcesoEducativo): string {
 export function maestroTemplate(data: Maestro): string {
     let body = `# ${data.nombre_maestro}\n\n`;
     body += `**Agrupación de origen:** ${data.agrupacion_origen}\n`;
+    return body;
+}
+
+export function reunionTemplate(data: Reunion): string {
+    const asistentes = data.asist_bahais.map((a) => `  - ${a}`).join("\n");
+    const fecha = data.fecha || "";
+    const titulo = data.tipo_reunion === "Otro" && data.nombre_custom
+        ? data.nombre_custom
+        : data.tipo_reunion;
+    let body = `# ${titulo} - ${fecha}\n\n`;
+    body += `**Fecha:** ${fecha}\n`;
+    body += `**Sector:** ${data.sector}\n`;
+    body += `**Tipo:** ${titulo}\n`;
+    body += `**Reportado por:** ${data.reportado_por}\n\n`;
+    body += `## Presentes\n${asistentes || "  -"}\n`;
+    if (data.resumen_publico) {
+        body += `\n## Resumen\n${data.resumen_publico}\n`;
+    }
+    if (data.foto_actividad) {
+        body += `\n## Foto\n![[${data.foto_actividad}]]\n`;
+    }
     return body;
 }

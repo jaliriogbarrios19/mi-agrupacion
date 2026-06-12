@@ -1,95 +1,30 @@
-import {
-    App,
-    normalizePath,
-    TFile,
-    TFolder,
-} from "obsidian";
-import type { MiAgrupacionSettings, Maestro, Visita, VidaComunitaria, ProcesoEducativo } from "../types";
-import { parseFrontmatterFromContent, buildMarkdownNote } from "./parser";
+import { App, normalizePath, TFile, TFolder } from "obsidian";
+import type { MiAgrupacionSettings, Maestro, Visita, VidaComunitaria, ProcesoEducativo, Reunion } from "../types";
+import { buildMarkdownNote } from "./parser";
 import {
     visitaTemplate,
     vidaComunitariaTemplate,
     procesoEducativoTemplate,
     maestroTemplate,
+    reunionTemplate,
 } from "./templates";
+import { DataManagerScan, type ScanResult } from "./manager-scan";
 
-export interface ScanResult<T> {
-    file: TFile;
-    data: T;
-}
+export type { ScanResult };
 
-export class DataManager {
-    private app: App;
-    private settings: MiAgrupacionSettings;
-
+export class DataManager extends DataManagerScan {
     constructor(app: App, settings: MiAgrupacionSettings) {
-        this.app = app;
-        this.settings = settings;
+        super(app, settings);
     }
 
     updateSettings(settings: MiAgrupacionSettings): void {
         this.settings = settings;
     }
 
-    getSectores(): string[] {
-        return this.settings.sectores;
-    }
-
-    discoverSectoresFromVault(): string[] {
-        const base = this.vault.getAbstractFileByPath(this.basePath());
-        if (!(base instanceof TFolder)) return [];
-        const discovered: string[] = [];
-        for (const child of base.children) {
-            if (child instanceof TFolder && child.name !== "Maestros" && !/^\d{4}-\d{4}$/.test(child.name)) {
-                discovered.push(child.name);
-            }
-        }
-        return discovered;
-    }
-
-    private get vault() {
-        return this.app.vault;
-    }
-
-    // -- Path builders --
-
-    private basePath(): string {
-        return this.settings.carpetaBase;
-    }
-
-    maestrosPath(): string {
-        return normalizePath(`${this.basePath()}/Maestros`);
-    }
-
-    recordsPath(sector: string, anioEtiqueta: string, ciclo: string, entidad: string): string {
-        return normalizePath(
-            `${this.basePath()}/${sector}/${anioEtiqueta}/${ciclo}/${entidad}`
-        );
-    }
-
     fotosPath(sector: string, anioEtiqueta: string, ciclo: string): string {
         return normalizePath(
             `${this.basePath()}/${sector}/${anioEtiqueta}/${ciclo}/Fotos`
         );
-    }
-
-    // -- Folder management --
-
-    async ensureFolder(path: string): Promise<void> {
-        const normalized = normalizePath(path);
-        const existing = this.vault.getAbstractFileByPath(normalized);
-        if (existing instanceof TFolder) return;
-
-        if (await this.vault.adapter.exists(normalized)) {
-            return;
-        }
-
-        try {
-            await this.vault.createFolder(normalized);
-        } catch {
-            if (await this.vault.adapter.exists(normalized)) return;
-            throw new Error(`No se pudo crear carpeta: ${normalized}`);
-        }
     }
 
     // -- Record CRUD --
@@ -121,11 +56,6 @@ export class DataManager {
         }
     }
 
-    async readRecord(file: TFile): Promise<Record<string, unknown>> {
-        const content = await this.vault.cachedRead(file);
-        return parseFrontmatterFromContent(content).frontmatter;
-    }
-
     async updateRecord(
         file: TFile,
         frontmatter: Record<string, unknown>,
@@ -143,64 +73,6 @@ export class DataManager {
             await this.deleteFoto(fotoPath);
         }
         await this.app.fileManager.trashFile(file);
-    }
-
-    // -- Scanning --
-
-    async scanRecords(
-        folderPath: string
-    ): Promise<Array<{ file: TFile; data: Record<string, unknown> }>> {
-        await this.ensureFolder(folderPath);
-        const folderObj = this.vault.getAbstractFileByPath(folderPath);
-        if (!(folderObj instanceof TFolder)) return [];
-
-        const files = (folderObj.children as (TFile | TFolder)[]).filter(
-            (f): f is TFile => f instanceof TFile && f.extension === "md"
-        );
-
-        const results: Array<{
-            file: TFile;
-            data: Record<string, unknown>;
-        }> = [];
-
-        for (const file of files) {
-            try {
-                const data = await this.readRecord(file);
-                results.push({ file, data });
-            } catch {
-                // skip corrupt files
-            }
-        }
-
-        return results;
-    }
-
-    async scanMaestros(): Promise<
-        Array<{ file: TFile; data: Maestro }>
-    > {
-        const path = this.maestrosPath();
-        await this.ensureFolder(path);
-        const folderObj = this.vault.getAbstractFileByPath(path);
-        if (!(folderObj instanceof TFolder)) return [];
-
-        const files = (folderObj.children as (TFile | TFolder)[]).filter(
-            (f): f is TFile => f instanceof TFile && f.extension === "md"
-        );
-
-        const results: Array<{ file: TFile; data: Maestro }> = [];
-
-        for (const file of files) {
-            try {
-                const data = await this.readRecord(file);
-                if (data.nombre_maestro) {
-                    results.push({ file, data: data as unknown as Maestro });
-                }
-            } catch {
-                // skip
-            }
-        }
-
-        return results;
     }
 
     // -- Foto management --
@@ -367,44 +239,19 @@ export class DataManager {
         return { moved, already, errors };
     }
 
-    // -- Cycle scanning (recursive for reports) --
+    // -- Convenience: save Reunion --
 
-    async scanAllRecordsInCycle(
+    async saveReunion(
+        frontmatter: Record<string, unknown>,
         anioEtiqueta: string,
         ciclo: string
-    ): Promise<{
-        visitas: ScanResult<Visita>[];
-        vidaComunitaria: ScanResult<VidaComunitaria>[];
-        procesoEducativo: ScanResult<ProcesoEducativo>[];
-    }> {
-        const sectores = this.getSectores().length > 0 ? this.getSectores() : [];
-        const allV: ScanResult<Visita>[] = [];
-        const allVC: ScanResult<VidaComunitaria>[] = [];
-        const allPE: ScanResult<ProcesoEducativo>[] = [];
-
-        // Legacy paths (without sector) for backward compatibility
-        const base = this.basePath();
-        const [legacyV, legacyVC, legacyPE] = await Promise.all([
-            this.scanRecords(normalizePath(`${base}/${anioEtiqueta}/${ciclo}/Visitas`)),
-            this.scanRecords(normalizePath(`${base}/${anioEtiqueta}/${ciclo}/VidaComunitaria`)),
-            this.scanRecords(normalizePath(`${base}/${anioEtiqueta}/${ciclo}/ProcesoEducativo`)),
-        ]);
-        allV.push(...legacyV.map(r => ({ file: r.file, data: r.data as unknown as Visita })));
-        allVC.push(...legacyVC.map(r => ({ file: r.file, data: r.data as unknown as VidaComunitaria })));
-        allPE.push(...legacyPE.map(r => ({ file: r.file, data: r.data as unknown as ProcesoEducativo })));
-
-        for (const sector of sectores) {
-            const [visitas, vidaComunitaria, procesoEducativo] =
-                await Promise.all([
-                    this.scanRecords(this.recordsPath(sector, anioEtiqueta, ciclo, "Visitas")),
-                    this.scanRecords(this.recordsPath(sector, anioEtiqueta, ciclo, "VidaComunitaria")),
-                    this.scanRecords(this.recordsPath(sector, anioEtiqueta, ciclo, "ProcesoEducativo")),
-                ]);
-            allV.push(...visitas.map(r => ({ file: r.file, data: r.data as unknown as Visita })));
-            allVC.push(...vidaComunitaria.map(r => ({ file: r.file, data: r.data as unknown as VidaComunitaria })));
-            allPE.push(...procesoEducativo.map(r => ({ file: r.file, data: r.data as unknown as ProcesoEducativo })));
-        }
-
-        return { visitas: allV, vidaComunitaria: allVC, procesoEducativo: allPE };
+    ): Promise<TFile> {
+        const body = reunionTemplate(frontmatter as unknown as Reunion);
+        const tipo = String(frontmatter.tipo_reunion || "reunion").slice(0, 20);
+        const fecha = String(frontmatter.fecha || "").replace(/\//g, "-");
+        const filename = `${fecha}-${tipo.replace(/[\\/:*?"<>|]/g, "-")}`;
+        const sector = String(frontmatter.sector || this.getSectores()[0] || "");
+        const folder = this.recordsPath(sector, anioEtiqueta, ciclo, "Reuniones");
+        return this.saveRecord(frontmatter, body, folder, filename);
     }
 }

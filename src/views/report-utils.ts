@@ -1,5 +1,5 @@
 import { Menu } from "obsidian";
-import type { Visita, VidaComunitaria, ProcesoEducativo } from "../types";
+import type { Visita, VidaComunitaria, ProcesoEducativo, Reunion } from "../types";
 import { CICLOS } from "../types";
 import { type ScanResult } from "../data/manager";
 import { type CicloInfo } from "../utils/ciclo";
@@ -60,7 +60,7 @@ export function renderSearchInput(
     return () => { if (timer) { window.clearTimeout(timer); timer = null; } };
 }
 
-export function matchesSearch<T extends ScanResult<Visita | VidaComunitaria | ProcesoEducativo>>(
+export function matchesSearch<T extends ScanResult<Visita | VidaComunitaria | ProcesoEducativo | Reunion>>(
     r: T,
     query: string,
 ): boolean {
@@ -75,7 +75,7 @@ export function matchesSearch<T extends ScanResult<Visita | VidaComunitaria | Pr
     return false;
 }
 
-export function sortByDateDesc<T extends ScanResult<Visita | VidaComunitaria | ProcesoEducativo>>(records: T[]): T[] {
+export function sortByDateDesc<T extends ScanResult<Visita | VidaComunitaria | ProcesoEducativo | Reunion>>(records: T[]): T[] {
     return [...records].sort((a, b) => {
         const da = (a.data as { fecha?: string }).fecha || "";
         const db = (b.data as { fecha?: string }).fecha || "";
