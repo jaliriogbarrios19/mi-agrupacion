@@ -5,7 +5,6 @@ import { pickFile, renderPreview } from "../utils/foto";
 import { detectarCiclo } from "../utils/ciclo";
 import { formatDate, generateId, parseDate } from "../utils/date";
 import { PromptModal } from "../utils/prompt-modal";
-import { ConfirmModal } from "../utils/confirm";
 import { TIPOS_REUNION, type Maestro, type Reunion } from "../types";
 import { reunionTemplate } from "../data/templates";
 
