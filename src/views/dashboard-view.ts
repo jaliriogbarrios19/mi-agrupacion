@@ -311,7 +311,8 @@ export class DashboardView extends ItemView {
                 ? "Informe generado. ... → Export to PDF"
                 : "Informe generado. Ctrl+P → Export to PDF";
             new Notice(msg);
-        } catch (_e) {
+        } catch (e) {
+            console.error("Mi Agrupacion — generarInforme:", e);
             new Notice("Error al guardar el informe");
         }
     }

@@ -146,7 +146,8 @@ export class ExportModal extends Modal {
                     cls: "mi-agrupacion-stat",
                 });
             }
-        } catch (_e) {
+        } catch (e) {
+            console.error("Mi Agrupacion — ExportModal loadPreview:", e);
             this.previewEl.empty();
             this.previewEl.createEl("p", { text: "Error al cargar datos", cls: "mi-agrupacion-stat" });
         }
@@ -207,7 +208,8 @@ export class ExportModal extends Modal {
 
             await shareText(text, this.app);
             this.close();
-        } catch (_e) {
+        } catch (e) {
+            console.error("Mi Agrupacion — ExportModal exportar:", e);
             this.previewEl.empty();
             this.previewEl.createEl("p", { text: "Error al exportar", cls: "mi-agrupacion-stat" });
         }
