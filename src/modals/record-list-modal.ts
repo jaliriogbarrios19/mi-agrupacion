@@ -40,9 +40,18 @@ const PE_FIELDS: RecordField[] = [
     { key: "libro", label: "Libro" },
 ];
 
+const REUNION_FIELDS: RecordField[] = [
+    { key: "fecha", label: "Fecha" },
+    { key: "sector", label: "Sector" },
+    { key: "tipo_reunion", label: "Tipo" },
+    { key: "asist_bahais", label: "Asistentes", list: true },
+    { key: "notas", label: "Notas" },
+];
+
 function fieldsFor(entry: RecordEntry): RecordField[] {
     if ("nombres_visitados" in entry.data) return VISITA_FIELDS;
     if ("tipo_actividad" in entry.data) return VC_FIELDS;
+    if ("tipo_reunion" in entry.data) return REUNION_FIELDS;
     return PE_FIELDS;
 }
 

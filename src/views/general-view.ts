@@ -100,42 +100,15 @@ export class GeneralView extends ItemView {
         kpi(grid, "Días Sagrados", String(sagrados.length), () => new RecordListModal(this.app, "Días Sagrados", tc(sagrados), (f) => this.openEditModal(f, "vc")).open());
         kpi(grid, "Otras actividades", String(otras.length), () => new RecordListModal(this.app, "Otras", tc(otras), (f) => this.openEditModal(f, "vc")).open());
         kpi(grid, "Participantes en F19D", String(participantesUnicos.size), () => new PersonListModal(this.app, "Participantes en Fiestas de 19 días", [...participantesUnicos].sort()).open());
-        kpi(grid, "Clases de niños", clases.length > 0 ? `${clases.length} (activas)` : "0", () => new RecordListModal(this.app, "Clases", tc(clases), (f) => this.openEditModal(f, "pe")).open());
-        kpi(grid, "GPJ", gpj.length > 0 ? `${gpj.length} (activos)` : "0", () => new RecordListModal(this.app, "GPJ", tc(gpj), (f) => this.openEditModal(f, "pe")).open());
-        kpi(grid, "CE", ce.length > 0 ? `${ce.length} (activas)` : "0", () => new RecordListModal(this.app, "CE", tc(ce), (f) => this.openEditModal(f, "pe")).open());
-        this.renderReunionesSection(contentEl, reuniones, tc);
+        const peCount = procesoEducativo.length;
+        kpi(grid, "Programa Educativo", String(peCount), () => new RecordListModal(this.app, "Programa Educativo", tc(procesoEducativo), (f) => this.openEditModal(f, "pe")).open());
+        const asistentesReuniones = new Set(reuniones.flatMap(r => r.data.asist_bahais));
+        kpi(grid, "Reuniones", String(reuniones.length), () => new RecordListModal(this.app, "Reuniones", tc(reuniones), (f) => this.openEditModal(f, "reunion")).open());
+        kpi(grid, "Asistentes a reuniones", String(asistentesReuniones.size), () => new PersonListModal(this.app, "Asistentes a reuniones", [...asistentesReuniones].sort()).open());
     }
 
     updateSettings(settings: MiAgrupacionSettings): void { this.settings = settings; }
     async onClose(): Promise<void> { this.contentEl.empty(); }
-
-    private renderReunionesSection(
-        container: HTMLElement,
-        reuniones: ScanResult<Reunion>[],
-        tc: (d: ScanResult<Visita | VidaComunitaria | ProcesoEducativo | Reunion>[]) => Array<{ file: TFile; data: Record<string, unknown> }>,
-    ): void {
-        if (reuniones.length === 0) return;
-        const sectionTitle = new Setting(container);
-        sectionTitle.setName("📋 Registro Público de Reuniones");
-        sectionTitle.setHeading();
-        const grid = container.createDiv({ cls: "mi-agrupacion-kpi-grid" });
-        const tipos = ["AEL", "Coordinación GPJ", "Coordinación CN", "Coordinación CE", "CEA", "Punto Medio", "Cierre de Perfil", "Reflexión"];
-        for (const tipo of tipos) {
-            const subset = reuniones.filter(r => r.data.tipo_reunion === tipo);
-            kpi(grid, tipo, String(subset.length), () =>
-                new RecordListModal(this.app, tipo, tc(subset), (f) => this.openEditModal(f, "reunion")).open()
-            );
-        }
-        const otrasReuniones = reuniones.filter(r => !tipos.includes(r.data.tipo_reunion));
-        if (otrasReuniones.length > 0) {
-            kpi(grid, "Otras reuniones", String(otrasReuniones.length), () =>
-                new RecordListModal(this.app, "Otras reuniones", tc(otrasReuniones), (f) => this.openEditModal(f, "reunion")).open()
-            );
-        }
-        const asistentesUnicos = new Set(reuniones.flatMap(r => r.data.asist_bahais));
-        kpi(grid, "Asistentes a reuniones", String(asistentesUnicos.size), () =>
-            new PersonListModal(this.app, "Asistentes a reuniones", [...asistentesUnicos].sort()).open());
-    }
 
     private openEditModal(file: TFile, kind: "visita" | "vc" | "pe" | "reunion"): void {
         const onSaved = () => { void this.render(); };

@@ -7,7 +7,7 @@ import { detectarCiclo } from "../utils/ciclo";
 import { formatDate, generateId, parseDate } from "../utils/date";
 import { PromptModal } from "../utils/prompt-modal";
 import { ConfirmModal } from "../utils/confirm";
-import { formatVisitaForShare, formatVisitasExport, shareText } from "../utils/share";
+import { formatVisitasExport, shareText } from "../utils/share";
 import {
     CONDICIONES,
     type Maestro,
