@@ -23,9 +23,6 @@ export function renderGeneralKPIs(
     const sagrados = vc.filter(v => v.data.tipo_actividad === "Día Sagrado");
     const otras = vc.filter(v => v.data.tipo_actividad !== "Fiesta de 19 días" && v.data.tipo_actividad !== "Día Sagrado");
     const participantesUnicos = new Set(fiestas.flatMap(v => [...(v.data.asist_bahais || []), ...(v.data.asist_simpatizantes || [])]));
-    const clases = pe.filter(p => p.data.tipo === "Clase de Niños");
-    const gpj = pe.filter(p => p.data.tipo === "GPJ");
-    const ce = pe.filter(p => p.data.tipo === "Círculo de Estudio");
     const tc = <T extends ScanResult<Visita | VidaComunitaria | ProcesoEducativo | Reunion>>(d: T[]) =>
         d.map(r => ({ file: r.file, data: r.data as unknown as Record<string, unknown> }));
     kpi(grid, "Visitas realizadas", String(totalV), () => new RecordListModal(app, "Visitas", tc(visitas), (f) => openEditModal(f, "visita")).open());
@@ -37,34 +34,11 @@ export function renderGeneralKPIs(
     kpi(grid, "Otras actividades", String(otras.length), () => new RecordListModal(app, "Otras", tc(otras), (f) => openEditModal(f, "vc")).open());
     kpi(grid, "Participantes en F19D", String(participantesUnicos.size), () =>
         new PersonListModal(app, "Participantes en Fiestas de 19 días", [...participantesUnicos].sort()).open());
-    kpi(grid, "Clases de niños", clases.length > 0 ? `${clases.length} (activas)` : "0", () => new RecordListModal(app, "Clases", tc(clases), (f) => openEditModal(f, "pe")).open());
-    kpi(grid, "GPJ", gpj.length > 0 ? `${gpj.length} (activos)` : "0", () => new RecordListModal(app, "GPJ", tc(gpj), (f) => openEditModal(f, "pe")).open());
-    kpi(grid, "CE", ce.length > 0 ? `${ce.length} (activas)` : "0", () => new RecordListModal(app, "CE", tc(ce), (f) => openEditModal(f, "pe")).open());
-    renderReunionesKPIs(grid, app, reuniones, openEditModal);
-}
-
-function renderReunionesKPIs(
-    grid: HTMLElement,
-    app: App,
-    reuniones: ScanResult<Reunion>[],
-    openEditModal: (file: TFile, kind: "visita" | "vc" | "pe" | "reunion") => void,
-): void {
-    const tipos = ["AEL", "Coordinación GPJ", "Coordinación CN", "Coordinación CE", "CEA", "Punto Medio", "Cierre de Perfil", "Reflexión"];
-    for (const tipo of tipos) {
-        const subset = reuniones.filter(r => r.data.tipo_reunion === tipo);
-        kpi(grid, tipo, String(subset.length), () =>
-            new RecordListModal(app, tipo, subset.map(r => ({ file: r.file, data: r.data as unknown as Record<string, unknown> })), (f) => openEditModal(f, "reunion")).open()
-        );
-    }
-    const otras = reuniones.filter(r => !tipos.includes(r.data.tipo_reunion));
-    if (otras.length > 0) {
-        kpi(grid, "Otras reuniones", String(otras.length), () =>
-            new RecordListModal(app, "Otras reuniones", otras.map(r => ({ file: r.file, data: r.data as unknown as Record<string, unknown> })), (f) => openEditModal(f, "reunion")).open()
-        );
-    }
-    const asistentesUnicos = new Set(reuniones.flatMap(r => r.data.asist_bahais));
-    kpi(grid, "Asistentes a reuniones", String(asistentesUnicos.size), () =>
-        new PersonListModal(app, "Asistentes a reuniones", [...asistentesUnicos].sort()).open());
+    kpi(grid, "Programa Educativo", String(pe.length), () => new RecordListModal(app, "Programa Educativo", tc(pe), (f) => openEditModal(f, "pe")).open());
+    kpi(grid, "Reuniones", String(reuniones.length), () => new RecordListModal(app, "Reuniones", tc(reuniones), (f) => openEditModal(f, "reunion")).open());
+    const asistentesReuniones = new Set(reuniones.flatMap(r => r.data.asist_bahais));
+    kpi(grid, "Asistentes a reuniones", String(asistentesReuniones.size), () =>
+        new PersonListModal(app, "Asistentes a reuniones", [...asistentesReuniones].sort()).open());
 }
 
 export function renderSRPVisitas(container: HTMLElement, visitas: ScanResult<Visita>[]): void {
