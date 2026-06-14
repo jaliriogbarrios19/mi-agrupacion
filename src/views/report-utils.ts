@@ -3,6 +3,7 @@ import type { Visita, VidaComunitaria, ProcesoEducativo, Reunion } from "../type
 import { CICLOS } from "../types";
 import { type ScanResult } from "../data/manager";
 import { type CicloInfo } from "../utils/ciclo";
+import { parseDate } from "../utils/date";
 
 export function renderCicloSelector(
     container: HTMLElement,
@@ -77,9 +78,9 @@ export function matchesSearch<T extends ScanResult<Visita | VidaComunitaria | Pr
 
 export function sortByDateDesc<T extends ScanResult<Visita | VidaComunitaria | ProcesoEducativo | Reunion>>(records: T[]): T[] {
     return [...records].sort((a, b) => {
-        const da = (a.data as { fecha?: string }).fecha || "";
-        const db = (b.data as { fecha?: string }).fecha || "";
-        return db.localeCompare(da);
+        const da = parseDate((a.data as { fecha?: string }).fecha || "");
+        const db = parseDate((b.data as { fecha?: string }).fecha || "");
+        return db.getTime() - da.getTime();
     });
 }
 

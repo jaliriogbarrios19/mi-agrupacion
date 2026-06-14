@@ -1,18 +1,30 @@
 import { App, Modal, Setting, Notice, type TextComponent, TFile } from "obsidian";
 import { DataManager } from "../data/manager";
 import { MaestroSuggest } from "./maestro-suggest";
+import { JornadaConfirmModal } from "./jornada-confirm-modal";
 import { pickFile, renderPreview } from "../utils/foto";
 import { detectarCiclo } from "../utils/ciclo";
 import { formatDate, generateId, parseDate } from "../utils/date";
 import { PromptModal } from "../utils/prompt-modal";
 import { ConfirmModal } from "../utils/confirm";
-import { formatVisitaForShare, shareText } from "../utils/share";
+import { formatVisitaForShare, formatVisitasExport, shareText } from "../utils/share";
 import {
     CONDICIONES,
     type Maestro,
     type Visita,
 } from "../types";
 import { visitaTemplate } from "../data/templates";
+
+export interface JornadaData {
+    fecha: string;
+    sector: string;
+    ciclo: string;
+    anioEtiqueta: string;
+    campanaExpansion: boolean;
+    reportado: string;
+    maestrosSeleccionados: string[];
+    jornadaVisitas: Record<string, unknown>[];
+}
 
 export class VisitaModal extends Modal {
     private dataManager: DataManager;
@@ -39,26 +51,39 @@ export class VisitaModal extends Modal {
     private proposito = "";
     private resumen = "";
     private reportado = "";
-    private personasVisitadas = 1;
     private visitadosContainer: HTMLElement;
+    private jornadaVisitas: Record<string, unknown>[] = [];
 
     constructor(
         app: App,
         dataManager: DataManager,
         onSaved: () => void,
         editFile?: TFile,
+        jornadaData?: JornadaData,
     ) {
         super(app);
         this.dataManager = dataManager;
         this.onSaved = onSaved;
         this.editFile = editFile ?? null;
-        const sectores = this.dataManager.getSectores();
-        this.sector = sectores.length > 0 ? sectores[0] : "";
-        const now = new Date();
-        const detected = detectarCiclo(now);
-        this.anioEtiqueta = detected.anioEtiqueta;
-        this.ciclo = detected.ciclo;
-        this.fechaStr = formatDate(now);
+
+        if (jornadaData) {
+            this.fechaStr = jornadaData.fecha;
+            this.sector = jornadaData.sector;
+            this.ciclo = jornadaData.ciclo;
+            this.anioEtiqueta = jornadaData.anioEtiqueta;
+            this.campanaExpansion = jornadaData.campanaExpansion;
+            this.reportado = jornadaData.reportado;
+            this.maestrosSeleccionados = [...jornadaData.maestrosSeleccionados];
+            this.jornadaVisitas = [...jornadaData.jornadaVisitas];
+        } else {
+            const sectores = this.dataManager.getSectores();
+            this.sector = sectores.length > 0 ? sectores[0] : "";
+            const now = new Date();
+            const detected = detectarCiclo(now);
+            this.anioEtiqueta = detected.anioEtiqueta;
+            this.ciclo = detected.ciclo;
+            this.fechaStr = formatDate(now);
+        }
     }
 
     async onOpen(): Promise<void> {
@@ -83,7 +108,6 @@ export class VisitaModal extends Modal {
             this.resumen = String(data.resumen || "");
             this.reportado = String(data.reportado_por || "");
             this.fotoPath = String(data.foto_actividad || "");
-            this.personasVisitadas = Number(data.personas_visitadas) || 1;
             const parsed = parseDate(this.fechaStr);
             if (!isNaN(parsed.getTime())) {
                 const d = detectarCiclo(parsed);
@@ -187,17 +211,6 @@ export class VisitaModal extends Modal {
         this.renderReportadoField(form);
 
         this.renderFotoField(form);
-
-        new Setting(form)
-            .setName("Personas visitadas")
-            .addText((t) =>
-                t
-                    .setValue("1")
-                    .onChange((v) => {
-                        const n = parseInt(v, 10);
-                        this.personasVisitadas = isNaN(n) ? 0 : n;
-                    })
-            );
 
         this.renderButtons(container);
     }
@@ -325,6 +338,7 @@ export class VisitaModal extends Modal {
         this.reportadoInput = setting.controlEl.createEl("input", {
             type: "text",
             placeholder: "Nombre",
+            value: this.reportado,
         });
         this.reportadoInput.addEventListener("input", () => {
             this.reportado = this.reportadoInput.value.trim();
@@ -445,13 +459,15 @@ export class VisitaModal extends Modal {
             resumen: this.resumen,
             reportado_por: this.reportado,
             foto_actividad: this.fotoPath,
-            personas_visitadas: this.personasVisitadas,
+            personas_visitadas: this.nombresVisitados.length,
         };
 
         if (this.editFile) {
             const body = visitaTemplate(frontmatter as unknown as Visita);
             await this.dataManager.updateRecord(this.editFile, frontmatter, body);
             new Notice("Visita actualizada correctamente");
+            this.onSaved();
+            this.close();
         } else {
             await this.dataManager.saveVisita(
                 frontmatter,
@@ -459,11 +475,45 @@ export class VisitaModal extends Modal {
                 this.ciclo
             );
             new Notice("Visita registrada correctamente");
+
+            this.jornadaVisitas.push(frontmatter);
+
+            const continuar = await new JornadaConfirmModal(this.app).show();
+            if (continuar) {
+                const jornadaData: JornadaData = {
+                    fecha: this.fechaStr,
+                    sector: this.sector,
+                    ciclo: this.ciclo,
+                    anioEtiqueta: this.anioEtiqueta,
+                    campanaExpansion: this.campanaExpansion,
+                    reportado: this.reportado,
+                    maestrosSeleccionados: [...this.maestrosSeleccionados],
+                    jornadaVisitas: this.jornadaVisitas,
+                };
+                this.close();
+                new VisitaModal(this.app, this.dataManager, this.onSaved, undefined, jornadaData).open();
+            } else {
+                if (this.jornadaVisitas.length > 0) {
+                    const confirmed = await new ConfirmModal(
+                        this.app,
+                        "¿Deseas compartir el resumen de la jornada?",
+                        "Solo guardar",
+                        "Compartir"
+                    ).show();
+
+                    if (confirmed) {
+                        const text = formatVisitasExport(
+                            this.jornadaVisitas,
+                            `Jornada de visitas — ${this.fechaStr}`,
+                            `Sector: ${this.sector}`
+                        );
+                        await shareText(text, this.app);
+                    }
+                }
+                this.onSaved();
+                this.close();
+            }
         }
-        const confirmed = await new ConfirmModal(this.app, "¿Deseas compartir este registro?", "Solo guardar", "Compartir").show();
-        if (confirmed) await shareText(formatVisitaForShare(frontmatter), this.app);
-        this.onSaved();
-        this.close();
     }
 
     onClose(): void {

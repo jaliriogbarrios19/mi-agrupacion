@@ -68,16 +68,31 @@ export function formatVisitasExport(
     text += `${records.length} visitas`;
     const personas = new Set(records.flatMap(r => (r.nombres_visitados as string[]) || [])).size;
     text += ` | ${personas} personas`;
-    const maestros = new Set(records.flatMap(r => (r.maestros as string[]) || [])).size;
-    text += ` | ${maestros} maestros\n\n`;
+    const allMaestros = new Set(records.flatMap(r => (r.maestros as string[]) || [])).size;
+    text += ` | ${allMaestros} maestros\n`;
+
+    const groups = new Map<string, { maestros: string; visitas: Record<string, unknown>[] }>();
     for (const r of records) {
-        const fecha = String(r.fecha || "").slice(0, 5);
-        const visitados = ((r.nombres_visitados as string[]) || []).join(", ");
         const ms = ((r.maestros as string[]) || []).join(", ");
-        text += `• ${fecha} — ${visitados}\n  👥 ${ms}`;
-        if (r.proposito_visita) text += `\n  🎯 ${String(r.proposito_visita)}`;
-        if (r.resumen) text += `\n  📝 ${String(r.resumen).slice(0, 80)}`;
-        text += "\n";
+        if (!groups.has(ms)) {
+            groups.set(ms, { maestros: ms, visitas: [] });
+        }
+        groups.get(ms)!.visitas.push(r);
+    }
+
+    let first = true;
+    for (const [, group] of groups) {
+        if (!first) text += "\n---\n";
+        first = false;
+        text += `\n👥 ${group.maestros}\n`;
+        for (const v of group.visitas) {
+            const visitados = ((v.nombres_visitados as string[]) || []).join(", ");
+            text += `\n• ${visitados}`;
+            if (v.proposito_visita) text += `\n  🎯 ${String(v.proposito_visita)}`;
+            if (v.resumen) text += `\n  📝 ${String(v.resumen).slice(0, 80)}`;
+            if (v.hubo_oracion) text += `\n  🙏 Hubo oración`;
+            text += "\n";
+        }
     }
     text += "\n📱 Registrado con Mi Agrupación";
     return text;
