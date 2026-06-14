@@ -1,4 +1,4 @@
-import { ItemView, Setting, WorkspaceLeaf, TFile } from "obsidian";
+import { ItemView, WorkspaceLeaf, TFile } from "obsidian";
 import type { MiAgrupacionSettings, Visita, VidaComunitaria, ProcesoEducativo, Reunion } from "../types";
 import { VIEW_TYPE_GENERAL } from "../types";
 import { DataManager, type ScanResult } from "../data/manager";
@@ -88,9 +88,6 @@ export class GeneralView extends ItemView {
         const sagrados = vidaComunitaria.filter(r => r.data.tipo_actividad === "Día Sagrado");
         const otras = vidaComunitaria.filter(r => r.data.tipo_actividad !== "Fiesta de 19 días" && r.data.tipo_actividad !== "Día Sagrado");
         const participantesUnicos = new Set(fiestas.flatMap(v => [...(v.data.asist_bahais || []), ...(v.data.asist_simpatizantes || [])]));
-        const clases = procesoEducativo.filter(r => r.data.tipo === "Clase de Niños");
-        const gpj = procesoEducativo.filter(r => r.data.tipo === "GPJ");
-        const ce = procesoEducativo.filter(r => r.data.tipo === "Círculo de Estudio");
         const grid = contentEl.createDiv({ cls: "mi-agrupacion-kpi-grid" });
         kpi(grid, "Visitas realizadas", String(totalV), () => new RecordListModal(this.app, "Visitas", tc(visitas), (f) => this.openEditModal(f, "visita")).open());
         kpi(grid, "Personas visitadas", String(personas), () => new RecordListModal(this.app, "Personas", tc(visitas), (f) => this.openEditModal(f, "visita")).open());
