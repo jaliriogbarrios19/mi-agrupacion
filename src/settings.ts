@@ -319,5 +319,12 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                         })
                 );
         }
+
+        // More about our work link
+        const linkSection = containerEl.createDiv("supsync-more-work");
+        linkSection.createEl("a", {
+            text: "Si quieres conocer más de nuestro trabajo y de otros plugins ingresa a spob.fly.dev",
+            href: "https://spob.fly.dev",
+        });
     }
 }

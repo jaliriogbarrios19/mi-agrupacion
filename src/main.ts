@@ -26,6 +26,7 @@ import { MaestroModal } from "./modals/maestro-modal";
 import { ReunionModal } from "./modals/reunion-modal";
 import { configure, setSession, isLoggedIn, isSessionExpired, setOnTokenRefresh } from "./supabase/client";
 import { SyncManager } from "./supabase/sync";
+import { WhatsNewModal } from "./whats-new-modal";
 
 export default class MiAgrupacionPlugin extends Plugin {
     settings: MiAgrupacionSettings;
@@ -89,6 +90,8 @@ export default class MiAgrupacionPlugin extends Plugin {
                 this.startSync();
             }
         }
+
+        this.checkWhatsNew();
     }
 
     private registerViews(): void {
@@ -259,6 +262,19 @@ export default class MiAgrupacionPlugin extends Plugin {
 
     async saveSettings(): Promise<void> {
         await this.saveData(this.settings);
+    }
+
+    private checkWhatsNew(): void {
+        const currentVersion = this.manifest.version;
+        const lastSeen = this.settings.lastSeenVersion;
+
+        if (lastSeen !== currentVersion) {
+            window.setTimeout(() => {
+                new WhatsNewModal(this.app, lastSeen).open();
+                this.settings.lastSeenVersion = currentVersion;
+                void this.saveSettings();
+            }, 1000);
+        }
     }
 
     private findCarpetaBase(): string {

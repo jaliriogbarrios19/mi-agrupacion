@@ -74,6 +74,7 @@ export interface MiAgrupacionSettings {
     authEmail: string;
     authRefreshToken: string;
     vaultId: string;
+    lastSeenVersion: string;
 }
 
 export const DEFAULT_SECTORES = ["General"];
@@ -89,6 +90,7 @@ export const DEFAULT_SETTINGS: MiAgrupacionSettings = {
     authEmail: "",
     authRefreshToken: "",
     vaultId: "",
+    lastSeenVersion: "",
 };
 
 export const CICLOS = [
