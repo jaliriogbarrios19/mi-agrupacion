@@ -273,7 +273,21 @@ export class ReunionModal extends Modal {
 
         const btn = wrapper.createEl("button", { text: "Adjuntar imagen" });
         btn.addEventListener("click", () => { void (async () => {
-            const picked = await pickFile();
+            const picked = await pickFile(false);
+            if (!picked) return;
+            this.fotoPath = await this.dataManager.saveFoto(
+                picked.arrayBuffer,
+                picked.name,
+                this.sector,
+                this.anioEtiqueta,
+                this.ciclo
+            );
+            renderPreview(this.fotoPreviewEl, this.fotoPath, this.app.vault);
+        })(); });
+        const cameraBtn = wrapper.createEl("button", { text: "📷" });
+        cameraBtn.setCssProps({ marginLeft: "4px" });
+        cameraBtn.addEventListener("click", () => { void (async () => {
+            const picked = await pickFile(true);
             if (!picked) return;
             this.fotoPath = await this.dataManager.saveFoto(
                 picked.arrayBuffer,

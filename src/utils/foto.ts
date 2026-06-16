@@ -1,14 +1,18 @@
 import { TFile, type Vault } from "obsidian";
 
-export function pickFile(): Promise<{
+export function pickFile(useCamera = false): Promise<{
     arrayBuffer: ArrayBuffer;
     name: string;
 } | null> {
     return new Promise((resolve) => {
         const input = activeDocument.createElement("input");
         input.type = "file";
-        input.accept = "image/*";
-        input.setAttribute("capture", "environment");
+        if (useCamera) {
+            input.accept = "image/*";
+            input.setAttribute("capture", "environment");
+        } else {
+            input.accept = ".jpg,.jpeg,.png,.gif,.webp,.svg,.bmp,.pdf,.doc,.docx,.xls,.xlsx";
+        }
 
         let settled = false;
         const finish = (result: { arrayBuffer: ArrayBuffer; name: string } | null) => {

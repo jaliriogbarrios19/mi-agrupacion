@@ -1,30 +1,15 @@
 import { App, Modal, Setting, Notice, type TextComponent, TFile } from "obsidian";
 import { DataManager } from "../data/manager";
 import { MaestroSuggest } from "./maestro-suggest";
-import { JornadaConfirmModal } from "./jornada-confirm-modal";
 import { pickFile, renderPreview } from "../utils/foto";
 import { detectarCiclo } from "../utils/ciclo";
 import { formatDate, generateId, parseDate } from "../utils/date";
 import { PromptModal } from "../utils/prompt-modal";
-import { ConfirmModal } from "../utils/confirm";
-import { formatVisitasExport, shareText } from "../utils/share";
-import {
-    CONDICIONES,
-    type Maestro,
-    type Visita,
-} from "../types";
+import { CONDICIONES, type Maestro, type Visita } from "../types";
 import { visitaTemplate } from "../data/templates";
+import { handlePostSave, type JornadaData } from "./visita-jornada";
 
-export interface JornadaData {
-    fecha: string;
-    sector: string;
-    ciclo: string;
-    anioEtiqueta: string;
-    campanaExpansion: boolean;
-    reportado: string;
-    maestrosSeleccionados: string[];
-    jornadaVisitas: Record<string, unknown>[];
-}
+export { type JornadaData };
 
 export class VisitaModal extends Modal {
     private dataManager: DataManager;
@@ -386,7 +371,25 @@ export class VisitaModal extends Modal {
             text: "Adjuntar imagen",
         });
         attachBtn.addEventListener("click", () => { void (async () => {
-            const picked = await pickFile();
+            const picked = await pickFile(false);
+            if (!picked) return;
+            this.fotoPath = await this.dataManager.saveFoto(
+                picked.arrayBuffer,
+                picked.name,
+                this.sector,
+                this.anioEtiqueta,
+                this.ciclo
+            );
+            renderPreview(
+                this.fotoPreviewEl,
+                this.fotoPath,
+                this.app.vault
+            );
+        })(); });
+        const cameraBtn = btnRow.createEl("button", { text: "📷" });
+        cameraBtn.setCssProps({ marginLeft: "4px" });
+        cameraBtn.addEventListener("click", () => { void (async () => {
+            const picked = await pickFile(true);
             if (!picked) return;
             this.fotoPath = await this.dataManager.saveFoto(
                 picked.arrayBuffer,
@@ -469,50 +472,21 @@ export class VisitaModal extends Modal {
             this.onSaved();
             this.close();
         } else {
-            await this.dataManager.saveVisita(
+            await handlePostSave(
+                this.app,
+                this.dataManager,
+                this.onSaved,
                 frontmatter,
+                this.fechaStr,
+                this.sector,
+                this.ciclo,
                 this.anioEtiqueta,
-                this.ciclo
+                this.campanaExpansion,
+                this.reportado,
+                this.maestrosSeleccionados,
+                this.jornadaVisitas,
             );
-            new Notice("Visita registrada correctamente");
-
-            this.jornadaVisitas.push(frontmatter);
-
-            const continuar = await new JornadaConfirmModal(this.app).show();
-            if (continuar) {
-                const jornadaData: JornadaData = {
-                    fecha: this.fechaStr,
-                    sector: this.sector,
-                    ciclo: this.ciclo,
-                    anioEtiqueta: this.anioEtiqueta,
-                    campanaExpansion: this.campanaExpansion,
-                    reportado: this.reportado,
-                    maestrosSeleccionados: [...this.maestrosSeleccionados],
-                    jornadaVisitas: this.jornadaVisitas,
-                };
-                this.close();
-                new VisitaModal(this.app, this.dataManager, this.onSaved, undefined, jornadaData).open();
-            } else {
-                if (this.jornadaVisitas.length > 0) {
-                    const confirmed = await new ConfirmModal(
-                        this.app,
-                        "¿Deseas compartir el resumen de la jornada?",
-                        "Solo guardar",
-                        "Compartir"
-                    ).show();
-
-                    if (confirmed) {
-                        const text = formatVisitasExport(
-                            this.jornadaVisitas,
-                            `Jornada de visitas — ${this.fechaStr}`,
-                            `Sector: ${this.sector}`
-                        );
-                        await shareText(text, this.app);
-                    }
-                }
-                this.onSaved();
-                this.close();
-            }
+            this.close();
         }
     }
 
