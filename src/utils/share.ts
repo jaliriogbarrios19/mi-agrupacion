@@ -89,7 +89,7 @@ export function formatVisitasExport(
             const visitados = ((v.nombres_visitados as string[]) || []).join(", ");
             text += `\n• ${visitados}`;
             if (v.proposito_visita) text += `\n  🎯 ${String(v.proposito_visita)}`;
-            if (v.resumen) text += `\n  📝 ${String(v.resumen).slice(0, 80)}`;
+            if (v.resumen) text += `\n  📝 ${String(v.resumen)}`;
             if (v.hubo_oracion) text += `\n  🙏 Hubo oración`;
             text += "\n";
         }

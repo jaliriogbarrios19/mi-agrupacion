@@ -1,6 +1,6 @@
 {
   "name": "mi-agrupacion",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "description": "Registro de actividades comunitarias y visitas para agrupaciones Bahá'ís",
   "main": "main.js",
   "scripts": {
@@ -8,7 +8,12 @@
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
     "test": "vitest run"
   },
-  "keywords": ["obsidian", "plugin", "bahai", "community"],
+  "keywords": [
+    "obsidian",
+    "plugin",
+    "bahai",
+    "community"
+  ],
   "author": "Jesus Garcia (jaliriogbarrios19)",
   "license": "MIT",
   "devDependencies": {
