@@ -251,11 +251,17 @@ export async function restGet<T>(
     params: Record<string, string>
 ): Promise<T[]> {
     const query = new URLSearchParams(params).toString();
-    const res = await api("GET", `/rest/v1/${table}?${query}`);
-    if (res.status >= 200 && res.status < 300) {
-        return (res.json as T[]) || [];
+    try {
+        const res = await api("GET", `/rest/v1/${table}?${query}`);
+        if (res.status >= 200 && res.status < 300) {
+            return (res.json as T[]) || [];
+        }
+        console.warn(`Mi Agrupacion — restGet ${table} returned ${res.status}`);
+        return [];
+    } catch (e) {
+        console.warn(`Mi Agrupacion — restGet ${table} failed:`, e);
+        return [];
     }
-    throw new Error(`restGet ${table} failed: ${res.status}`);
 }
 
 export async function restUpsert<T>(
