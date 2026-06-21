@@ -217,6 +217,61 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                 );
         }
 
+        // ── Copy tutorial button (for auxiliaries) ──
+        const AUX_TUTORIAL_SETTINGS = `📱 Tutorial para instalar Mi Agrupación
+
+Paso 1: Descargar Obsidian
+• iPhone/iPad: App Store → buscar "Obsidian"
+• Android: Play Store → buscar "Obsidian"
+• PC/Mac: obsidian.md → Download
+
+Paso 2: Crear tu carpeta de notas
+• Abrí Obsidian → "Create new vault"
+• Poné un nombre → "Create"
+
+Paso 3: Instalar el plugin
+• Settings ⚙️ → Community plugins
+• Desactivá "Restricted mode"
+• Tocá "Browse" → buscá "Mi Agrupación"
+• "Install" → "Enable"
+
+Paso 4: Conectar
+• Settings → Mi Agrupación
+• Tocá "Auxiliar"
+• Pegá el código que te voy a pasar
+• Tocá "Conectar"
+
+Paso 5: Crear tu cuenta
+• Tocá "Crear cuenta"
+• Poné tu email y contraseña
+• Listo ✅
+
+Usar el plugin
+• Para registrar una visita: dashboard → "Nueva Visita"
+• Para ver reportes: dashboard → "Vista General"
+• Se sincroniza solo cada 2 minutos 👍
+
+Configuración avanzada (para administradores)
+1. Crear proyecto en supabase.com
+2. Copiar URL y anon key desde Settings → API
+3. Pegar en el plugin
+4. Ejecutar el SQL en el editor de Supabase
+5. Crear cuenta de administrador
+6. Generar código de conexión y compartirlo`;
+
+        new Setting(containerEl)
+            .setName("Compartir tutorial")
+            .setDesc("Copiá el tutorial para compartirlo")
+            .addButton((btn) =>
+                btn.setButtonText("Copiar tutorial").setCta().onClick(() => {
+                    void navigator.clipboard.writeText(AUX_TUTORIAL_SETTINGS).then(() => {
+                        new Notice("Tutorial copiado. Pegalo en WhatsApp o donde necesites.");
+                    }).catch(() => {
+                        new Notice("No se pudo copiar al portapapeles");
+                    });
+                })
+            );
+
         let confirmMode = false;
         new Setting(containerEl)
             .setName("")
@@ -336,35 +391,35 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
         }
 
         // ── Copy auxiliary tutorial button ──
-        const AUX_TUTORIAL = `📱 *Tutorial para instalar Mi Agrupación*
+        const AUX_TUTORIAL = `📱 Tutorial para instalar Mi Agrupación
 
-*Paso 1: Descargar Obsidian*
+Paso 1: Descargar Obsidian
 • iPhone/iPad: App Store → buscar "Obsidian"
 • Android: Play Store → buscar "Obsidian"
 • PC/Mac: obsidian.md → Download
 
-*Paso 2: Crear tu carpeta de notas*
+Paso 2: Crear tu carpeta de notas
 • Abrí Obsidian → "Create new vault"
 • Poné un nombre → "Create"
 
-*Paso 3: Instalar el plugin*
+Paso 3: Instalar el plugin
 • Settings ⚙️ → Community plugins
 • Desactivá "Restricted mode"
 • Tocá "Browse" → buscá "Mi Agrupación"
 • "Install" → "Enable"
 
-*Paso 4: Conectar*
+Paso 4: Conectar
 • Settings → Mi Agrupación
 • Tocá "Auxiliar"
 • Pegá el código que te voy a pasar
 • Tocá "Conectar"
 
-*Paso 5: Crear tu cuenta*
+Paso 5: Crear tu cuenta
 • Tocá "Crear cuenta"
 • Poné tu email y contraseña
 • Listo ✅
 
-*Usar el plugin*
+Usar el plugin
 • Para registrar una visita: dashboard → "Nueva Visita"
 • Para ver reportes: dashboard → "Vista General"
 • Se sincroniza solo cada 2 minutos 👍`;
@@ -376,6 +431,57 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                 btn.setButtonText("Copiar tutorial").setCta().onClick(() => {
                     void navigator.clipboard.writeText(AUX_TUTORIAL).then(() => {
                         new Notice("Tutorial copiado. Pegalo en WhatsApp o donde necesites.");
+                    }).catch(() => {
+                        new Notice("No se pudo copiar al portapapeles");
+                    });
+                })
+            );
+
+        // ── Copy admin tutorial button ──
+        const ADMIN_TUTORIAL = `⚙️ Tutorial para configurar Mi Agrupación (Administrador)
+
+Paso 1: Crear proyecto en Supabase
+• Andá a supabase.com → Sign up → New Project
+• Elegí un nombre (ej: "Mi Agrupación")
+• Poné una contraseña fuerte
+• Esperá unos segundos a que se cree
+
+Paso 2: Copiar la URL del proyecto
+• En el dashboard, andá a Settings → API
+• Copiá la "Project URL" (empieza con https://xxx.supabase.co)
+
+Paso 3: Copiar la anon key
+• En la misma página (Settings → API)
+• Copiá la "anon public" key (empieza con eyJ...)
+
+Paso 4: Crear las tablas
+• Andá al SQL Editor de Supabase
+• Copiá el SQL que ves en el plugin
+• Pegalo ahí y hacé clic en "Run"
+• Si no ves errores, todo está bien
+
+Paso 5: Crear tu cuenta
+• Hacé clic en "Iniciar sesión" en el plugin
+• Creá una cuenta con tu email y contraseña
+• Esta es tu cuenta de administrador
+
+Paso 6: Compartir con tu agrupación
+• Generá un código de conexión desde el plugin
+• Compartilo con los miembros de tu agrupación
+• Ellos lo pegan en su plugin y listo
+
+Usar el plugin
+• Para registrar una visita: dashboard → "Nueva Visita"
+• Para ver reportes: dashboard → "Vista General"
+• El sync es automático cada 2 minutos`;
+
+        new Setting(guideEl)
+            .setName("Tutorial para administradores")
+            .setDesc("Copiá el tutorial de configuración para otros admins")
+            .addButton((btn) =>
+                btn.setButtonText("Copiar tutorial admin").onClick(() => {
+                    void navigator.clipboard.writeText(ADMIN_TUTORIAL).then(() => {
+                        new Notice("Tutorial admin copiado.");
                     }).catch(() => {
                         new Notice("No se pudo copiar al portapapeles");
                     });
