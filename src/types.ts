@@ -75,6 +75,7 @@ export interface MiAgrupacionSettings {
     authRefreshToken: string;
     vaultId: string;
     lastSeenVersion: string;
+    setupMode: "admin" | "auxiliar" | "";
 }
 
 export const DEFAULT_SECTORES = ["General"];
@@ -91,6 +92,7 @@ export const DEFAULT_SETTINGS: MiAgrupacionSettings = {
     authRefreshToken: "",
     vaultId: "",
     lastSeenVersion: "",
+    setupMode: "",
 };
 
 export const CICLOS = [

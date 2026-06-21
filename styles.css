@@ -309,3 +309,49 @@
 .supsync-more-work a:hover {
   text-decoration: underline;
 }
+
+/* Session Expired Warning */
+.mi-agrupacion-session-warn {
+  background: var(--background-secondary);
+  border: 1px solid var(--text-error);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+
+.mi-agrupacion-session-warn p {
+  color: var(--text-error);
+  margin: 0 0 8px 0;
+}
+
+/* Setup Wizard */
+.mi-agrupacion-setup-modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.mi-agrupacion-mode-card {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+
+.mi-agrupacion-mode-card:hover {
+  border-color: var(--text-accent);
+}
+
+.mi-agrupacion-mode-card h4 {
+  margin: 0 0 8px 0;
+  color: var(--text-accent);
+}
+
+.mi-agrupacion-mode-card p {
+  font-size: 0.9em;
+  color: var(--text-muted);
+  margin: 0 0 12px 0;
+}

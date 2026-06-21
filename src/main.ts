@@ -24,7 +24,7 @@ import { VidaComunitariaModal } from "./modals/vida-comunitaria-modal";
 import { ProcesoEducativoModal } from "./modals/proceso-educativo-modal";
 import { MaestroModal } from "./modals/maestro-modal";
 import { ReunionModal } from "./modals/reunion-modal";
-import { configure, setSession, isLoggedIn, isSessionExpired, setOnTokenRefresh } from "./supabase/client";
+import { configure, setSession, isLoggedIn, isSessionExpired, setOnTokenRefresh, setOnSessionExpired } from "./supabase/client";
 import { SyncManager } from "./supabase/sync";
 import { WhatsNewModal } from "./whats-new-modal";
 
@@ -36,6 +36,12 @@ export default class MiAgrupacionPlugin extends Plugin {
 
     async onload(): Promise<void> {
         await this.loadSettings();
+
+        // Auto-detect existing users as admin
+        if (!this.settings.setupMode && this.settings.supabaseUrl) {
+            this.settings.setupMode = "admin";
+            await this.saveSettings();
+        }
 
         const resolved = this.findCarpetaBase();
         if (resolved !== this.settings.carpetaBase) {
@@ -86,7 +92,15 @@ export default class MiAgrupacionPlugin extends Plugin {
                 this.settings.authRefreshToken = refresh;
                 void this.saveSettings();
             });
-            if (isLoggedIn()) {
+            setOnSessionExpired(() => {
+                this.settings.authToken = "";
+                this.settings.authEmail = "";
+                this.settings.authRefreshToken = "";
+                void this.saveSettings();
+                this.stopSync();
+                new Notice("Sesión expirada. Iniciá sesión de nuevo en Ajustes → Mi Agrupación.");
+            });
+            if (isLoggedIn() && !isSessionExpired()) {
                 this.startSync();
             }
         }
@@ -290,6 +304,7 @@ export default class MiAgrupacionPlugin extends Plugin {
     }
 
     startSync(): void {
+        this.stopSync();
         if (!this.settings.vaultId || !this.settings.supabaseUrl) return;
         if (isSessionExpired()) {
             this.syncStatusBar.setText("⚠️ Sesión expirada");

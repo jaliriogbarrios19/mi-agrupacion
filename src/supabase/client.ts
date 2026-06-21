@@ -8,15 +8,21 @@ let userEmail = "";
 let sessionExpired = false;
 let refreshing: Promise<boolean> | null = null;
 let onTokenRefresh: ((token: string, refresh: string) => void) | null = null;
+let onSessionExpired: (() => void) | null = null;
 
 export function setOnTokenRefresh(cb: (token: string, refresh: string) => void): void {
     onTokenRefresh = cb;
 }
 
+export function setOnSessionExpired(cb: () => void): void {
+    onSessionExpired = cb;
+}
+
 export function configure(url: string, anonKey: string): void {
     const trimmed = url.replace(/\/$/, "");
-    if (!trimmed.startsWith("https://") && !trimmed.startsWith("http://")) {
+    if (!trimmed.startsWith("https://")) {
         new Notice("La URL de Supabase debe empezar con https://");
+        return;
     }
     supabaseUrl = trimmed;
     supabaseAnonKey = anonKey;
@@ -26,6 +32,7 @@ export function setSession(token: string, email: string, refresh: string = ""): 
     accessToken = token;
     userEmail = email;
     refreshToken = refresh;
+    sessionExpired = false;
 }
 
 export function clearSession(): void {
@@ -39,6 +46,7 @@ export function markSessionExpired(): void {
     accessToken = "";
     refreshToken = "";
     sessionExpired = true;
+    if (onSessionExpired) onSessionExpired();
 }
 
 export function isSessionExpired(): boolean {
@@ -67,17 +75,18 @@ function authHeaders(): Record<string, string> {
 async function api(
     method: string,
     path: string,
-    body?: unknown
+    body?: unknown,
+    extraHeaders?: Record<string, string>
 ): Promise<{ status: number; json: unknown }> {
     const fullUrl = `${supabaseUrl}${path}`;
-    if (!supabaseUrl.startsWith("https://") && !supabaseUrl.startsWith("http://")) {
+    if (!supabaseUrl.startsWith("https://")) {
         new Notice(`URL de Supabase inválida: ${supabaseUrl}\nDebe empezar con https://`);
         throw new Error("URL de Supabase inválida");
     }
     const params: RequestUrlParam = {
         url: fullUrl,
         method,
-        headers: authHeaders(),
+        headers: { ...authHeaders(), ...extraHeaders },
     };
     if (body !== undefined) {
         params.body = JSON.stringify(body);
@@ -87,7 +96,7 @@ async function api(
         return { status: res.status, json: res.json };
     } catch (e) {
         const msg = String(e);
-        if (msg.includes("401") && accessToken) {
+        if (msg.includes("401") && accessToken && !sessionExpired) {
             const refreshed = await refreshSession();
             if (refreshed) {
                 params.headers = authHeaders();
@@ -101,7 +110,8 @@ async function api(
 }
 
 async function refreshSession(): Promise<boolean> {
-    if (!refreshToken) return false;
+    if (!refreshToken || refreshToken.length < 20) return false;
+    if (sessionExpired) return false;
     if (refreshing) return refreshing;
     refreshing = (async () => {
         try {
@@ -115,6 +125,7 @@ async function refreshSession(): Promise<boolean> {
                 const data = res.json as { access_token: string; refresh_token: string };
                 accessToken = data.access_token;
                 refreshToken = data.refresh_token;
+                sessionExpired = false;
                 if (onTokenRefresh) onTokenRefresh(data.access_token, data.refresh_token);
                 return true;
             }
@@ -143,6 +154,7 @@ export async function signup(
                 accessToken = d.access_token;
                 refreshToken = d.refresh_token || "";
                 userEmail = d.user?.email || email;
+                sessionExpired = false;
             }
             return { success: true, autoConfirmed: hasToken };
         }
@@ -176,6 +188,7 @@ export async function login(
             accessToken = data.access_token;
             refreshToken = data.refresh_token;
             userEmail = data.user?.email || email;
+            sessionExpired = false;
             return { success: true };
         }
         const data = res.json as Record<string, unknown>;
@@ -242,7 +255,7 @@ export async function restGet<T>(
     if (res.status >= 200 && res.status < 300) {
         return (res.json as T[]) || [];
     }
-    return [];
+    throw new Error(`restGet ${table} failed: ${res.status}`);
 }
 
 export async function restUpsert<T>(
@@ -250,14 +263,12 @@ export async function restUpsert<T>(
     body: T,
     onConflict: string
 ): Promise<boolean> {
-    const headers = authHeaders();
-    headers["Prefer"] = "resolution=merge-duplicates";
-    const res = await requestUrl({
-        url: `${supabaseUrl}/rest/v1/${table}?on_conflict=${onConflict}`,
-        method: "POST",
-        headers,
-        body: JSON.stringify(body),
-    });
+    const res = await api(
+        "POST",
+        `/rest/v1/${table}?on_conflict=${onConflict}`,
+        body,
+        { "Prefer": "resolution=merge-duplicates" }
+    );
     return res.status >= 200 && res.status < 300;
 }
 
@@ -272,11 +283,9 @@ export async function restDelete(
 
 export async function joinVault(vaultId: string, userId: string): Promise<boolean> {
     try {
-        const res = await requestUrl({
-            url: `${supabaseUrl}/rest/v1/vault_members`,
-            method: "POST",
-            headers: authHeaders(),
-            body: JSON.stringify({ vault_id: vaultId, user_id: userId }),
+        const res = await api("POST", "/rest/v1/vault_members", {
+            vault_id: vaultId,
+            user_id: userId,
         });
         return res.status >= 200 && res.status < 300;
     } catch {
@@ -309,4 +318,39 @@ export async function setVaultSectores(
         { id: vaultId, sectores: JSON.stringify(sectores) },
         "id"
     );
+}
+
+// ── Connection code (admin ↔ auxiliar) ──
+
+const CODE_PREFIX = "MA:v1:";
+
+export function encodeConnectionCode(
+    url: string,
+    key: string,
+    vaultId: string
+): string {
+    const payload = JSON.stringify({ u: url, k: key, v: vaultId });
+    return CODE_PREFIX + btoa(unescape(encodeURIComponent(payload)));
+}
+
+export function decodeConnectionCode(
+    code: string
+): { supabaseUrl: string; supabaseAnonKey: string; vaultId: string } | null {
+    try {
+        if (!code.startsWith(CODE_PREFIX)) return null;
+        const base64 = code.slice(CODE_PREFIX.length);
+        const payload = JSON.parse(decodeURIComponent(escape(atob(base64)))) as {
+            u?: string;
+            k?: string;
+            v?: string;
+        };
+        if (!payload.u || !payload.k || !payload.v) return null;
+        return {
+            supabaseUrl: payload.u,
+            supabaseAnonKey: payload.k,
+            vaultId: payload.v,
+        };
+    } catch {
+        return null;
+    }
 }

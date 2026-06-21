@@ -2,9 +2,10 @@ import { PluginSettingTab, Setting, Notice, type App } from "obsidian";
 import type { MiAgrupacionSettings } from "./types";
 
 import type MiAgrupacionPlugin from "./main";
-import { isLoggedIn, getSession, logout, setVaultSectores, configure, isVaultAdmin } from "./supabase/client";
+import { isLoggedIn, getSession, logout, setVaultSectores, configure, isVaultAdmin, isSessionExpired, encodeConnectionCode } from "./supabase/client";
 import { SETUP_SQL, getSqlEditorUrl } from "./supabase/setup-sql";
 import { LoginModal } from "./supabase/login-modal";
+import { ConnectionCodeModal } from "./setup-wizard";
 import { generateId } from "./utils/date";
 
 export class MiAgrupacionSettingTab extends PluginSettingTab {
@@ -42,6 +43,205 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
+        if (!this.settings.setupMode && !this.settings.supabaseUrl) {
+            this.renderSetupWizard(containerEl);
+            return;
+        }
+        if (this.settings.setupMode === "auxiliar") {
+            this.renderAuxiliarPanel(containerEl);
+            return;
+        }
+        this.renderAdminPanel(containerEl);
+    }
+
+    // ── Setup Wizard (first time) ──
+
+    private renderSetupWizard(containerEl: HTMLElement): void {
+        new Setting(containerEl).setHeading().setName("Mi Agrupación");
+
+        containerEl.createEl("p", {
+            text: "¿Cómo querés configurar el plugin?",
+            cls: "setting-item-description",
+        });
+
+        const modes = containerEl.createDiv({ cls: "mi-agrupacion-setup-modes" });
+
+        const adminCard = modes.createDiv({ cls: "mi-agrupacion-mode-card" });
+        new Setting(adminCard).setHeading().setName("Administrador");
+        adminCard.createEl("p", {
+            text: "Configurás Supabase, creás el vault y compartís el código con tu agrupación.",
+        });
+        adminCard.createEl("button", { text: "Soy admin", cls: "mod-cta" })
+            .addEventListener("click", () => {
+                this.settings.setupMode = "admin";
+                void this.saveFn();
+                this.render();
+            });
+
+        const auxCard = modes.createDiv({ cls: "mi-agrupacion-mode-card" });
+        new Setting(auxCard).setHeading().setName("Auxiliar");
+        auxCard.createEl("p", {
+            text: "Pegás el código que te dio tu admin y listo. Sin configuración técnica.",
+        });
+        auxCard.createEl("button", { text: "Soy auxiliar" })
+            .addEventListener("click", () => {
+                new ConnectionCodeModal(this.app, (result) => {
+                    this.settings.supabaseUrl = result.supabaseUrl;
+                    this.settings.supabaseAnonKey = result.supabaseAnonKey;
+                    this.settings.vaultId = result.vaultId;
+                    this.settings.setupMode = "auxiliar";
+                    configure(result.supabaseUrl, result.supabaseAnonKey);
+                    void this.saveFn();
+                    this.renderAuxiliarAfterConnect(containerEl);
+                }).open();
+            });
+    }
+
+    // ── Auxiliar: post-connect (login step) ──
+
+    private renderAuxiliarAfterConnect(containerEl: HTMLElement): void {
+        containerEl.empty();
+
+        new Setting(containerEl).setHeading().setName("Mi Agrupación");
+
+        const infoEl = containerEl.createDiv({ cls: "mi-agrupacion-session-warn" });
+        infoEl.createEl("p", {
+            text: "Conectado. Ahora creá tu cuenta o iniciá sesión.",
+            cls: "setting-item-description",
+        });
+
+        if (isLoggedIn()) {
+            this.renderAuxiliarPanel(containerEl);
+            return;
+        }
+
+        new Setting(containerEl)
+            .setName("Cuenta")
+            .setDesc("Creá una cuenta nueva o usá una existente")
+            .addButton((btn) =>
+                btn.setButtonText("Iniciar sesión / Crear cuenta").setCta().onClick(() => {
+                    new LoginModal(this.app, (email) => { void (async () => {
+                        const s = getSession();
+                        this.settings.authToken = s.token;
+                        this.settings.authEmail = email;
+                        this.settings.authRefreshToken = s.refresh;
+                        await this.saveFn();
+                        this.plugin.startSync();
+                        this.renderAuxiliarPanel(containerEl);
+                    })(); }).open();
+                })
+            );
+    }
+
+    // ── Auxiliar Panel (simplified) ──
+
+    private renderAuxiliarPanel(containerEl: HTMLElement): void {
+        new Setting(containerEl).setHeading().setName("Mi Agrupación");
+
+        new Setting(containerEl)
+            .setName("Agrupación")
+            .setDesc(this.settings.nombreAgrupacion || "Sin nombre");
+
+        const loggedIn = isLoggedIn();
+        const expired = isSessionExpired();
+
+        if (loggedIn && !expired) {
+            const session = getSession();
+            new Setting(containerEl)
+                .setName("Sesión")
+                .setDesc(`Conectado como ${session.email}`)
+                .addButton((btn) =>
+                    btn.setButtonText("Cerrar sesión").onClick(() => {
+                        void (async () => {
+                            this.plugin.stopSync();
+                            void logout();
+                            this.settings.authToken = "";
+                            this.settings.authEmail = "";
+                            this.settings.authRefreshToken = "";
+                            await this.saveFn();
+                            this.render();
+                        })();
+                    })
+                );
+
+            new Setting(containerEl)
+                .setName("Sync")
+                .setDesc("Subir y descargar registros")
+                .addButton((btn) =>
+                    btn.setButtonText("Sincronizar").setCta().onClick(() => {
+                        if (this.plugin.syncManager) {
+                            void this.plugin.syncManager.pushNow();
+                        } else {
+                            new Notice("El sync no está inicializado.");
+                        }
+                    })
+                );
+        } else if (expired) {
+            const warnEl = containerEl.createDiv({ cls: "mi-agrupacion-session-warn" });
+            warnEl.createEl("p", {
+                text: "Tu sesión expiró.",
+                cls: "setting-item-description",
+            });
+            new Setting(warnEl)
+                .setName("Sesión expirada")
+                .addButton((btn) =>
+                    btn.setButtonText("Iniciar sesión de nuevo").setCta().onClick(() => {
+                        void (async () => {
+                            this.plugin.stopSync();
+                            void logout();
+                            this.settings.authToken = "";
+                            this.settings.authEmail = "";
+                            this.settings.authRefreshToken = "";
+                            await this.saveFn();
+                            this.render();
+                        })();
+                    })
+                );
+        } else {
+            new Setting(containerEl)
+                .setName("Cuenta")
+                .setDesc("Iniciá sesión para sincronizar")
+                .addButton((btn) =>
+                    btn.setButtonText("Iniciar sesión").setCta().onClick(() => {
+                        new LoginModal(this.app, (email) => { void (async () => {
+                            const s = getSession();
+                            this.settings.authToken = s.token;
+                            this.settings.authEmail = email;
+                            this.settings.authRefreshToken = s.refresh;
+                            await this.saveFn();
+                            this.plugin.startSync();
+                            this.render();
+                        })(); }).open();
+                    })
+                );
+        }
+
+        let confirmMode = false;
+        new Setting(containerEl)
+            .setName("")
+            .setDesc("")
+            .addButton((btn) =>
+                btn.setButtonText(confirmMode ? "¿Seguro? Clic para confirmar" : "Cambiar modo")
+                    .setWarning()
+                    .onClick(() => {
+                        if (!confirmMode) {
+                            confirmMode = true;
+                            btn.setButtonText("¿Seguro? Clic para confirmar");
+                            return;
+                        }
+                        this.settings.setupMode = "";
+                        this.settings.supabaseUrl = "";
+                        this.settings.supabaseAnonKey = "";
+                        this.settings.vaultId = "";
+                        void this.saveFn();
+                        this.render();
+                })
+            );
+    }
+
+    // ── Admin Panel (full settings) ──
+
+    private renderAdminPanel(containerEl: HTMLElement): void {
         new Setting(containerEl).setHeading().setName("Mi Agrupación");
 
         new Setting(containerEl)
@@ -56,7 +256,15 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                     })
             );
 
-        // ── Sectores ──
+        this.renderSectores(containerEl);
+        this.renderSupabaseConfig(containerEl);
+        this.renderSyncSettings(containerEl);
+        this.renderSession(containerEl);
+        this.renderConnectionCode(containerEl);
+        this.renderFooter(containerEl);
+    }
+
+    private renderSectores(containerEl: HTMLElement): void {
         new Setting(containerEl).setHeading().setName("Sectores");
         new Setting(containerEl)
             .setDesc("Definí los sectores de tu agrupación. Se sincronizan con Supabase.");
@@ -79,7 +287,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                     text: sector,
                 });
                 const x = chip.createEl("span", { text: " ×" });
-                    x.setCssStyles({ cursor: "pointer" });
+                x.setCssStyles({ cursor: "pointer" });
                 x.addEventListener("click", () => {
                     this.settings.sectores = this.settings.sectores.filter(
                         (s) => s !== sector
@@ -109,8 +317,9 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
         });
 
         renderChips();
+    }
 
-        // ── Supabase Sync ──
+    private renderSupabaseConfig(containerEl: HTMLElement): void {
         new Setting(containerEl).setHeading().setName("Sincronización (Supabase)");
 
         new Setting(containerEl)
@@ -140,7 +349,6 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                 });
             });
 
-        // ── Database Setup ──
         const dbSetupSection = containerEl.createDiv({ cls: "mi-agrupacion-db-setup" });
         new Setting(dbSetupSection).setHeading().setName("Configuración de la base de datos");
         dbSetupSection.createEl("p", {
@@ -187,7 +395,9 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                 window.open(getSqlEditorUrl(this.settings.supabaseUrl), "_blank");
             });
         }
+    }
 
+    private renderSyncSettings(containerEl: HTMLElement): void {
         new Setting(containerEl)
             .setName("Intervalo de sync (minutos)")
             .setDesc("0 = manual")
@@ -196,9 +406,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                     .setValue(String(this.settings.syncInterval))
                     .onChange(async (value) => {
                         const n = parseInt(value, 10);
-                        this.settings.syncInterval = isNaN(n)
-                            ? 0
-                            : n;
+                        this.settings.syncInterval = isNaN(n) ? 0 : n;
                         await this.saveFn();
                     })
             );
@@ -219,7 +427,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
         if (!this.settings.vaultId) {
             new Setting(containerEl)
                 .setName("")
-                .setDesc("El ID se genera solo la primera vez. Si otro miembro ya creó el vault, pegá su ID acá.")
+                .setDesc("El ID se genera solo la primera vez.")
                 .addButton((btn) =>
                     btn.setButtonText("Generar ID").onClick(() => {
                         void (async () => {
@@ -230,26 +438,53 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                     })
                 );
         }
+    }
 
+    private renderSession(containerEl: HTMLElement): void {
         const loggedIn = isLoggedIn();
         const session = getSession();
+        const expired = isSessionExpired();
 
         if (loggedIn) {
-            new Setting(containerEl)
-                .setName("Sesión")
-                .setDesc(`Conectado como ${session.email}`)
-                .addButton((btn) =>
+            if (expired) {
+                const warnEl = containerEl.createDiv({ cls: "mi-agrupacion-session-warn" });
+                warnEl.createEl("p", {
+                    text: "Tu sesión expiró. Iniciá sesión de nuevo.",
+                    cls: "setting-item-description",
+                });
+                new Setting(warnEl)
+                    .setName("Sesión expirada")
+                    .addButton((btn) =>
+                        btn.setButtonText("Cerrar sesión y volver a iniciar").setCta().onClick(() => {
+                            void (async () => {
+                                this.plugin.stopSync();
+                                void logout();
+                                this.settings.authToken = "";
+                                this.settings.authEmail = "";
+                                this.settings.authRefreshToken = "";
+                                await this.saveFn();
+                                this.render();
+                            })();
+                        })
+                    );
+            } else {
+                new Setting(containerEl)
+                    .setName("Sesión")
+                    .setDesc(`Conectado como ${session.email}`)
+                    .addButton((btn) =>
                     btn.setButtonText("Cerrar sesión").onClick(() => {
                         void (async () => {
+                            this.plugin.stopSync();
                             void logout();
                             this.settings.authToken = "";
                             this.settings.authEmail = "";
                             this.settings.authRefreshToken = "";
-                            await this.saveFn();
-                            this.render();
-                        })();
-                    })
-                );
+                                await this.saveFn();
+                                this.render();
+                            })();
+                        })
+                    );
+            }
 
             new Setting(containerEl)
                 .setName("Sync")
@@ -259,7 +494,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                         if (this.plugin.syncManager) {
                             void this.plugin.syncManager.pushNow();
                         } else {
-                            new Notice("El sync no está inicializado. Verificá la URL y API key.");
+                            new Notice("El sync no está inicializado.");
                         }
                     })
                 )
@@ -270,7 +505,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                             return;
                         }
                         if (!isLoggedIn()) {
-                            new Notice("Sesión expirada. Cerrá sesión y volvé a iniciar.");
+                            new Notice("Sesión expirada.");
                             return;
                         }
                         const pulled = await this.plugin.syncManager.pullChanges();
@@ -279,25 +514,32 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                             this.plugin.refreshAllViews();
                         }
                     })(); })
-                )
+                );
 
-            const limpiarContainer = containerEl.createDiv();
-            void (async () => {
-                if (this.settings.vaultId && await isVaultAdmin(this.settings.vaultId)) {
-                    new Setting(limpiarContainer)
-                        .setName("Limpiar Supabase")
-                        .setDesc("Borra todos los datos remotos y vuelve a subir desde cero")
-                        .addButton((btn) =>
-                            btn.setButtonText("Limpiar y resubir").setCta().onClick(() => { void (async () => {
-                                if (this.plugin.syncManager) {
-                                    void this.plugin.syncManager.clearAndResync();
-                                } else {
-                                    new Notice("Sync no inicializado. ¿Sesión expirada?");
-                                }
-                            })(); })
-                        );
-                }
-            })();
+            new Setting(containerEl)
+                .setName("Limpiar Supabase")
+                .setDesc("Borra todos los datos remotos y vuelve a subir desde cero")
+                .addButton((btn) =>
+                    btn.setButtonText("Limpiar y resubir").setCta().onClick(() => { void (async () => {
+                        if (!isLoggedIn()) {
+                            new Notice("Iniciá sesión primero");
+                            return;
+                        }
+                        if (!this.settings.vaultId) {
+                            new Notice("No hay vault ID configurado");
+                            return;
+                        }
+                        if (!await isVaultAdmin(this.settings.vaultId)) {
+                            new Notice("No sos admin de este vault");
+                            return;
+                        }
+                        if (this.plugin.syncManager) {
+                            void this.plugin.syncManager.clearAndResync();
+                        } else {
+                            new Notice("Sync no inicializado.");
+                        }
+                    })(); })
+                );
         } else {
             new Setting(containerEl)
                 .setName("Cuenta")
@@ -319,8 +561,32 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                         })
                 );
         }
+    }
 
-        // More about our work link
+    private renderConnectionCode(containerEl: HTMLElement): void {
+        new Setting(containerEl).setHeading().setName("Compartir conexión");
+
+        const code = encodeConnectionCode(
+            this.settings.supabaseUrl,
+            this.settings.supabaseAnonKey,
+            this.settings.vaultId
+        );
+
+        new Setting(containerEl)
+            .setName("Código de conexión")
+            .setDesc("Compartí este código con los auxiliares de tu agrupación")
+            .addButton((btn) =>
+                btn.setButtonText("Copiar código").setCta().onClick(() => {
+                    void navigator.clipboard.writeText(code).then(() => {
+                        new Notice("Código copiado al portapapeles");
+                    }).catch(() => {
+                        new Notice("No se pudo copiar");
+                    });
+                })
+            );
+    }
+
+    private renderFooter(containerEl: HTMLElement): void {
         const linkSection = containerEl.createDiv("supsync-more-work");
         linkSection.createEl("a", {
             text: "Si quieres conocer más de nuestro trabajo y de otros plugins ingresa a spob.fly.dev",
