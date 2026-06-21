@@ -337,7 +337,8 @@ export function encodeConnectionCode(
     syncInterval: number
 ): string {
     const payload = JSON.stringify({ u: url, k: key, v: vaultId, s: syncInterval });
-    return CODE_PREFIX + btoa(unescape(encodeURIComponent(payload)));
+    const bytes = new TextEncoder().encode(payload);
+    return CODE_PREFIX + btoa(String.fromCharCode(...bytes));
 }
 
 export function decodeConnectionCode(
@@ -346,7 +347,8 @@ export function decodeConnectionCode(
     try {
         if (!code.startsWith(CODE_PREFIX)) return null;
         const base64 = code.slice(CODE_PREFIX.length);
-        const payload = JSON.parse(decodeURIComponent(escape(atob(base64)))) as {
+        const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+        const payload = JSON.parse(new TextDecoder().decode(bytes)) as {
             u?: string;
             k?: string;
             v?: string;
