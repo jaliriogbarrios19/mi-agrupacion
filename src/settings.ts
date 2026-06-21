@@ -270,10 +270,23 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
     private renderSetupGuide(containerEl: HTMLElement): void {
         const guideEl = containerEl.createDiv({ cls: "mi-agrupacion-guide" });
 
-        new Setting(guideEl).setHeading().setName("Guía de configuración");
+        let guideOpen = false;
+        const stepsContent = guideEl.createDiv({ cls: "mi-agrupacion-guide-content" });
+        stepsContent.setCssStyles({ display: "none" });
+
+        new Setting(guideEl)
+            .setHeading()
+            .setName("Guía de configuración")
+            .addButton((btn) =>
+                btn.setButtonText("Mostrar guía").onClick(() => {
+                    guideOpen = !guideOpen;
+                    stepsContent.setCssStyles({ display: guideOpen ? "block" : "none" });
+                    btn.setButtonText(guideOpen ? "Ocultar guía" : "Mostrar guía");
+                })
+            );
 
         const isConfigured = this.settings.supabaseUrl && this.settings.supabaseAnonKey && this.settings.vaultId;
-        const statusEl = guideEl.createEl("p", {
+        stepsContent.createEl("p", {
             cls: "setting-item-description",
             text: isConfigured
                 ? "Tu plugin está configurado. Si necesitás cambiar algo, seguí los pasos abajo."
@@ -310,7 +323,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
         ];
 
         for (const step of steps) {
-            const stepEl = guideEl.createDiv({ cls: "mi-agrupacion-guide-step" });
+            const stepEl = stepsContent.createDiv({ cls: "mi-agrupacion-guide-step" });
             stepEl.createEl("h4", { text: step.title });
             stepEl.createEl("p", { text: step.text });
             if (step.link) {
@@ -321,6 +334,53 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                 linkEl.setCssStyles({ display: "inline-block", marginTop: "4px" });
             }
         }
+
+        // ── Copy auxiliary tutorial button ──
+        const AUX_TUTORIAL = `📱 *Tutorial para instalar Mi Agrupación*
+
+*Paso 1: Descargar Obsidian*
+• iPhone/iPad: App Store → buscar "Obsidian"
+• Android: Play Store → buscar "Obsidian"
+• PC/Mac: obsidian.md → Download
+
+*Paso 2: Crear tu carpeta de notas*
+• Abrí Obsidian → "Create new vault"
+• Poné un nombre → "Create"
+
+*Paso 3: Instalar el plugin*
+• Settings ⚙️ → Community plugins
+• Desactivá "Restricted mode"
+• Tocá "Browse" → buscá "Mi Agrupación"
+• "Install" → "Enable"
+
+*Paso 4: Conectar*
+• Settings → Mi Agrupación
+• Tocá "Auxiliar"
+• Pegá el código que te voy a pasar
+• Tocá "Conectar"
+
+*Paso 5: Crear tu cuenta*
+• Tocá "Crear cuenta"
+• Poné tu email y contraseña
+• Listo ✅
+
+*Usar el plugin*
+• Para registrar una visita: dashboard → "Nueva Visita"
+• Para ver reportes: dashboard → "Vista General"
+• Se sincroniza solo cada 2 minutos 👍`;
+
+        new Setting(guideEl)
+            .setName("Tutorial para auxiliares")
+            .setDesc("Copiá el tutorial y compartilo por WhatsApp, email o Telegram")
+            .addButton((btn) =>
+                btn.setButtonText("Copiar tutorial").setCta().onClick(() => {
+                    void navigator.clipboard.writeText(AUX_TUTORIAL).then(() => {
+                        new Notice("Tutorial copiado. Pegalo en WhatsApp o donde necesites.");
+                    }).catch(() => {
+                        new Notice("No se pudo copiar al portapapeles");
+                    });
+                })
+            );
     }
 
     private renderSectores(containerEl: HTMLElement): void {
