@@ -379,7 +379,7 @@ Configuración avanzada (para administradores)
 
         for (const step of steps) {
             const stepEl = stepsContent.createDiv({ cls: "mi-agrupacion-guide-step" });
-            stepEl.createEl("h4", { text: step.title });
+            new Setting(stepEl).setHeading().setName(step.title);
             stepEl.createEl("p", { text: step.text });
             if (step.link) {
                 const linkEl = stepEl.createEl("a", {
