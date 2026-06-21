@@ -5,6 +5,7 @@ export interface ConnectionResult {
     supabaseUrl: string;
     supabaseAnonKey: string;
     vaultId: string;
+    syncInterval: number;
 }
 
 export class ConnectionCodeModal extends Modal {

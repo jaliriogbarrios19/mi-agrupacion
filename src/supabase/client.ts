@@ -333,15 +333,16 @@ const CODE_PREFIX = "MA:v1:";
 export function encodeConnectionCode(
     url: string,
     key: string,
-    vaultId: string
+    vaultId: string,
+    syncInterval: number
 ): string {
-    const payload = JSON.stringify({ u: url, k: key, v: vaultId });
+    const payload = JSON.stringify({ u: url, k: key, v: vaultId, s: syncInterval });
     return CODE_PREFIX + btoa(unescape(encodeURIComponent(payload)));
 }
 
 export function decodeConnectionCode(
     code: string
-): { supabaseUrl: string; supabaseAnonKey: string; vaultId: string } | null {
+): { supabaseUrl: string; supabaseAnonKey: string; vaultId: string; syncInterval: number } | null {
     try {
         if (!code.startsWith(CODE_PREFIX)) return null;
         const base64 = code.slice(CODE_PREFIX.length);
@@ -349,12 +350,14 @@ export function decodeConnectionCode(
             u?: string;
             k?: string;
             v?: string;
+            s?: number;
         };
         if (!payload.u || !payload.k || !payload.v) return null;
         return {
             supabaseUrl: payload.u,
             supabaseAnonKey: payload.k,
             vaultId: payload.v,
+            syncInterval: typeof payload.s === "number" ? payload.s : 2,
         };
     } catch {
         return null;

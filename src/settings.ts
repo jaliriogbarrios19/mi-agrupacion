@@ -89,6 +89,7 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
                     this.settings.supabaseUrl = result.supabaseUrl;
                     this.settings.supabaseAnonKey = result.supabaseAnonKey;
                     this.settings.vaultId = result.vaultId;
+                    this.settings.syncInterval = result.syncInterval;
                     this.settings.setupMode = "auxiliar";
                     configure(result.supabaseUrl, result.supabaseAnonKey);
                     void this.saveFn();
@@ -569,7 +570,8 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
         const code = encodeConnectionCode(
             this.settings.supabaseUrl,
             this.settings.supabaseAnonKey,
-            this.settings.vaultId
+            this.settings.vaultId,
+            this.settings.syncInterval || 2
         );
 
         new Setting(containerEl)
