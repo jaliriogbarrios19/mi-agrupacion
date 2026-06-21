@@ -245,6 +245,8 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
     private renderAdminPanel(containerEl: HTMLElement): void {
         new Setting(containerEl).setHeading().setName("Mi Agrupación");
 
+        this.renderSetupGuide(containerEl);
+
         new Setting(containerEl)
             .setName("Nombre de la agrupación")
             .setDesc("Aparece en el dashboard y reportes")
@@ -263,6 +265,62 @@ export class MiAgrupacionSettingTab extends PluginSettingTab {
         this.renderSession(containerEl);
         this.renderConnectionCode(containerEl);
         this.renderFooter(containerEl);
+    }
+
+    private renderSetupGuide(containerEl: HTMLElement): void {
+        const guideEl = containerEl.createDiv({ cls: "mi-agrupacion-guide" });
+
+        new Setting(guideEl).setHeading().setName("Guía de configuración");
+
+        const isConfigured = this.settings.supabaseUrl && this.settings.supabaseAnonKey && this.settings.vaultId;
+        const statusEl = guideEl.createEl("p", {
+            cls: "setting-item-description",
+            text: isConfigured
+                ? "Tu plugin está configurado. Si necesitás cambiar algo, seguí los pasos abajo."
+                : "Seguí estos pasos para configurar el plugin por primera vez.",
+        });
+
+        const steps = [
+            {
+                title: "1. Crear proyecto en Supabase",
+                text: "Andá a supabase.com → Sign up → New Project. Elegí un nombre (ej: \"Mi Agrupación\") y una contraseña fuerte. Esperá unos segundos a que se cree.",
+                link: "https://supabase.com",
+                linkText: "Abrir Supabase",
+            },
+            {
+                title: "2. Copiar la URL del proyecto",
+                text: "En el dashboard de tu proyecto, andá a Settings → API. Copiá la \"Project URL\" (empieza con https://xxx.supabase.co). Pegala en \"URL de Supabase\" abajo.",
+            },
+            {
+                title: "3. Copiar la anon key",
+                text: "En la misma página (Settings → API), copiá la \"anon public\" key (empieza con eyJ...). Pegala en \"Clave anónima\" abajo.",
+            },
+            {
+                title: "4. Crear las tablas",
+                text: "Andá al SQL Editor de Supabase (botón \"SQL Editor\" en el menú izquierdo). Copiá el SQL de abajo y pegalo ahí. Hacé clic en \"Run\". Si no ves errores, todo está bien.",
+            },
+            {
+                title: "5. Crear tu cuenta",
+                text: "Hacé clic en \"Iniciar sesión\" abajo y creá una cuenta con tu email y contraseña. Esta es tu cuenta de administrador.",
+            },
+            {
+                title: "6. Compartir con tu agrupación",
+                text: "Una vez configurado, generá un código de conexión y compartilo con los miembros de tu agrupación. Ellos lo pegan en su plugin y listo.",
+            },
+        ];
+
+        for (const step of steps) {
+            const stepEl = guideEl.createDiv({ cls: "mi-agrupacion-guide-step" });
+            stepEl.createEl("h4", { text: step.title });
+            stepEl.createEl("p", { text: step.text });
+            if (step.link) {
+                const linkEl = stepEl.createEl("a", {
+                    text: step.linkText,
+                    href: step.link,
+                });
+                linkEl.setCssStyles({ display: "inline-block", marginTop: "4px" });
+            }
+        }
     }
 
     private renderSectores(containerEl: HTMLElement): void {
