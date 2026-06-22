@@ -36,8 +36,7 @@ function renderSetupGuide(ctx: SettingsContext, containerEl: HTMLElement): void 
     const guideEl = containerEl.createDiv({ cls: "mi-agrupacion-guide" });
 
     let guideOpen = false;
-    const stepsContent = guideEl.createDiv({ cls: "mi-agrupacion-guide-content" });
-    stepsContent.setCssStyles({ display: "none" });
+    const stepsContent = guideEl.createDiv({ cls: "mi-agrupacion-guide-content mi-agrupacion-hidden" });
 
     new Setting(guideEl)
         .setHeading()
@@ -45,7 +44,7 @@ function renderSetupGuide(ctx: SettingsContext, containerEl: HTMLElement): void 
         .addButton((btn) =>
             btn.setButtonText("Mostrar guía").onClick(() => {
                 guideOpen = !guideOpen;
-                stepsContent.setCssStyles({ display: guideOpen ? "block" : "none" });
+                stepsContent.toggleClass("mi-agrupacion-hidden", !guideOpen);
                 btn.setButtonText(guideOpen ? "Ocultar guía" : "Mostrar guía");
             })
         );
@@ -95,8 +94,8 @@ function renderSetupGuide(ctx: SettingsContext, containerEl: HTMLElement): void 
             const linkEl = stepEl.createEl("a", {
                 text: step.linkText,
                 href: step.link,
+                cls: "mi-agrupacion-guide-link",
             });
-            linkEl.setCssStyles({ display: "inline-block", marginTop: "4px" });
         }
     }
 
@@ -239,14 +238,13 @@ function renderSectores(ctx: SettingsContext, containerEl: HTMLElement): void {
         .setDesc("Definí los sectores de tu agrupación. Se sincronizan con Supabase.");
 
     const chipsContainer = containerEl.createDiv({ cls: "mi-agrupacion-sectores-chips" });
-    const inputRow = containerEl.createDiv();
-    inputRow.setCssStyles({ display: "flex", gap: "8px", marginBottom: "8px" });
+    const inputRow = containerEl.createDiv({ cls: "mi-agrupacion-sectores-input-row" });
 
     const input = inputRow.createEl("input", {
         type: "text",
         placeholder: "Nombre del sector",
+        cls: "mi-agrupacion-sectores-input",
     });
-    input.setCssStyles({ flex: "1" });
 
     const renderChips = () => {
         chipsContainer.empty();
@@ -255,8 +253,7 @@ function renderSectores(ctx: SettingsContext, containerEl: HTMLElement): void {
                 cls: "mi-agrupacion-tag",
                 text: sector,
             });
-            const x = chip.createEl("span", { text: " ×" });
-            x.setCssStyles({ cursor: "pointer" });
+            const x = chip.createEl("span", { text: " ×", cls: "mi-agrupacion-tag-close" });
             x.addEventListener("click", () => {
                 ctx.settings.sectores = ctx.settings.sectores.filter(
                     (s) => s !== sector
@@ -331,13 +328,7 @@ function renderSupabaseConfig(ctx: SettingsContext, containerEl: HTMLElement): v
         text: SETUP_SQL,
     });
     sqlArea.setAttr("readonly", "true");
-    sqlArea.setCssStyles({
-        width: "100%",
-        height: "200px",
-        fontFamily: "var(--font-monospace)",
-        fontSize: "0.82em",
-        resize: "vertical",
-    });
+    sqlArea.addClass("mi-agrupacion-sql-textarea-full");
 
     const btnRow = dbSetupSection.createDiv({ cls: "mi-agrupacion-form-actions" });
 
@@ -345,9 +336,9 @@ function renderSupabaseConfig(ctx: SettingsContext, containerEl: HTMLElement): v
     copyBtn.addEventListener("click", () => { void (async () => {
         try {
             await navigator.clipboard.writeText(SETUP_SQL);
-            sqlArea.setCssStyles({ borderColor: "var(--text-success)" });
+            sqlArea.addClass("mi-agrupacion-sql-success");
             window.setTimeout(() => {
-                sqlArea.setCssStyles({ borderColor: "" });
+                sqlArea.removeClass("mi-agrupacion-sql-success");
             }, 2000);
         } catch {
             sqlArea.select();
@@ -604,15 +595,6 @@ class CodeDisplayModal extends Modal {
             text: this.code,
         });
         textArea.setAttr("readonly", "true");
-        textArea.setCssStyles({
-            width: "100%",
-            minHeight: "80px",
-            fontFamily: "var(--font-monospace)",
-            fontSize: "0.85em",
-            padding: "8px",
-            resize: "vertical",
-            wordBreak: "break-all",
-        });
 
         const actions = contentEl.createDiv({ cls: "mi-agrupacion-form-actions" });
 
@@ -622,7 +604,7 @@ class CodeDisplayModal extends Modal {
         actions.createEl("button", { text: "Copiar al portapapeles", cls: "mod-cta" })
             .addEventListener("click", () => {
                 textArea.select();
-                const ok = document.execCommand("copy");
+                const ok = activeDocument.execCommand("copy");
                 new Notice(ok ? "Código copiado" : "No se pudo copiar — seleccioná manualmente");
             });
     }

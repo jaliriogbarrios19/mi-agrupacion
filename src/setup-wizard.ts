@@ -1,5 +1,5 @@
 import { App, Modal, Setting, Notice } from "obsidian";
-import { decodeConnectionCode, configure } from "./supabase/client";
+import { configure } from "./supabase/client";
 import { resolveInvitationCode, isShortCode } from "./supabase/invitations";
 
 export interface ConnectionResult {
@@ -35,7 +35,7 @@ export class ConnectionCodeModal extends Modal {
             .setName("Código de conexión")
             .addText((text) => {
                 text.setPlaceholder("MA:v1:...");
-                text.inputEl.setCssStyles({ width: "100%" });
+                text.inputEl.addClass("mi-agrupacion-full-width");
                 text.onChange((v) => { codeValue = v.trim(); });
                 text.inputEl.addEventListener("keydown", (e) => {
                     if (e.key === "Enter") {
@@ -60,27 +60,18 @@ export class ConnectionCodeModal extends Modal {
             return;
         }
 
-        // Try short code first (MA:v1:<ref>/<key>/<8chars>)
-        if (isShortCode(code)) {
-            const resolved = await resolveInvitationCode(code);
-            if (resolved) {
-                configure(resolved.supabaseUrl, resolved.supabaseAnonKey);
-                this.onConnect(resolved);
-                this.close();
-                return;
-            }
-            new Notice("No se pudo resolver el código corto. Verificá que sea correcto.");
-            return;
-        }
-
-        // Try legacy long code (MA:v1:<base64>)
-        const result = decodeConnectionCode(code);
-        if (!result) {
+        if (!isShortCode(code)) {
             new Notice("Código inválido. Pedile un código nuevo a tu administrador.");
             return;
         }
-        configure(result.supabaseUrl, result.supabaseAnonKey);
-        this.onConnect(result);
+
+        const resolved = await resolveInvitationCode(code);
+        if (!resolved) {
+            new Notice("No se pudo resolver el código. Verificá que sea correcto.");
+            return;
+        }
+        configure(resolved.supabaseUrl, resolved.supabaseAnonKey);
+        this.onConnect(resolved);
         this.close();
     }
 

@@ -388,3 +388,52 @@
   font-size: 0.9em;
   color: var(--text-muted);
 }
+
+.mi-agrupacion-hidden {
+  display: none;
+}
+
+.mi-agrupacion-guide-link {
+  display: inline-block;
+  margin-top: 4px;
+}
+
+.mi-agrupacion-sectores-input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.mi-agrupacion-sectores-input-row input {
+  flex: 1;
+}
+
+.mi-agrupacion-tag-close {
+  cursor: pointer;
+}
+
+.mi-agrupacion-sql-textarea-full {
+  width: 100%;
+  height: 200px;
+  font-family: var(--font-monospace);
+  font-size: 0.82em;
+  resize: vertical;
+}
+
+.mi-agrupacion-sql-success {
+  border-color: var(--text-success) !important;
+}
+
+.mi-agrupacion-code-textarea {
+  width: 100%;
+  min-height: 80px;
+  font-family: var(--font-monospace);
+  font-size: 0.85em;
+  padding: 8px;
+  resize: vertical;
+  word-break: break-all;
+}
+
+.mi-agrupacion-full-width {
+  width: 100%;
+}
