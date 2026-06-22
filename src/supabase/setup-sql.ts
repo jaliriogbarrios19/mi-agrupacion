@@ -153,7 +153,10 @@ BEGIN
     WHERE i.code = upper(p_code)
     AND i.created_at > now() - interval '7 days';
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;`;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION generate_invitation(UUID, TEXT, TEXT, INT) TO authenticated;
+GRANT EXECUTE ON FUNCTION resolve_invitation(TEXT) TO anon;`;
 
 export function getSqlEditorUrl(supabaseUrl: string): string {
     const match = supabaseUrl.match(/https?:\/\/([^.]+)\.supabase\.co/);
@@ -205,4 +208,7 @@ BEGIN
     WHERE i.code = upper(p_code)
     AND i.created_at > now() - interval '7 days';
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;`;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION generate_invitation(UUID, TEXT, TEXT, INT) TO authenticated;
+GRANT EXECUTE ON FUNCTION resolve_invitation(TEXT) TO anon;`;

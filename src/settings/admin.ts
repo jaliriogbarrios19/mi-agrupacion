@@ -4,7 +4,6 @@ import { isLoggedIn, getSession, logout, isVaultAdmin, isSessionExpired, configu
 import { SETUP_SQL, MIGRATION_V7_SQL, getSqlEditorUrl } from "../supabase/setup-sql";
 import { LoginModal } from "../supabase/login-modal";
 import { generateId } from "../utils/date";
-import { generateInvitationCode } from "../supabase/invitations";
 
 export function renderAdminPanel(ctx: SettingsContext, containerEl: HTMLElement): void {
     new Setting(containerEl).setHeading().setName("Mi Agrupación");
@@ -535,21 +534,16 @@ function renderConnectionCode(ctx: SettingsContext, containerEl: HTMLElement): v
 
     new Setting(containerEl)
         .setName("Código de conexión")
-        .setDesc("Generá un código corto para compartir con los auxiliares de tu agrupación")
+        .setDesc("Copiá los datos que necesitan los auxiliares de tu agrupación")
         .addButton((btn) =>
-            btn.setButtonText("Generar código").setCta().onClick(() => { void (async () => {
-                const shortCode = await generateInvitationCode(
-                    ctx.settings.vaultId,
+            btn.setButtonText("Ver código").setCta().onClick(() => {
+                new CodeDisplayModal(
+                    ctx.app,
                     ctx.settings.supabaseUrl,
                     ctx.settings.supabaseAnonKey,
-                    ctx.settings.syncInterval || 2
-                );
-                if (shortCode) {
-                    new CodeDisplayModal(ctx.app, ctx.settings.supabaseUrl, ctx.settings.supabaseAnonKey, shortCode).open();
-                } else {
-                    new Notice("Error: ejecutá el SQL de configuración actualizado en Supabase para crear la tabla invitations.");
-                }
-            })(); })
+                    ctx.settings.vaultId
+                ).open();
+            })
         );
 }
 
@@ -565,13 +559,13 @@ function renderFooter(containerEl: HTMLElement): void {
 class CodeDisplayModal extends Modal {
     private supabaseUrl: string;
     private anonKey: string;
-    private shortCode: string;
+    private vaultId: string;
 
-    constructor(app: App, supabaseUrl: string, anonKey: string, shortCode: string) {
+    constructor(app: App, supabaseUrl: string, anonKey: string, vaultId: string) {
         super(app);
         this.supabaseUrl = supabaseUrl;
         this.anonKey = anonKey;
-        this.shortCode = `MA:v1:${shortCode}`;
+        this.vaultId = vaultId;
     }
 
     onOpen(): void {
@@ -579,30 +573,27 @@ class CodeDisplayModal extends Modal {
         contentEl.empty();
         contentEl.addClass("mi-agrupacion-modal");
 
-        contentEl.createEl("h3", { text: "Código de conexión" });
+        contentEl.createEl("h3", { text: "Datos de conexión" });
 
         contentEl.createEl("p", {
-            text: "Copiá este bloque y compartilo con los auxiliares de tu agrupación.",
+            text: "Compartí estos datos con los auxiliares de tu agrupación.",
             cls: "setting-item-description",
         });
 
-        const block = `URL: ${this.supabaseUrl}\nClave: ${this.anonKey}\nCódigo: ${this.shortCode}`;
-
-        const textArea = contentEl.createEl("textarea", {
-            cls: "mi-agrupacion-code-textarea",
-            text: block,
-        });
-        textArea.setAttr("readonly", "true");
+        new Setting(contentEl).setName("URL").setDesc(this.supabaseUrl);
+        new Setting(contentEl).setName("Clave").setDesc(this.anonKey);
+        new Setting(contentEl).setName("Vault ID").setDesc(this.vaultId);
 
         const actions = contentEl.createDiv({ cls: "mi-agrupacion-form-actions" });
 
         actions.createEl("button", { text: "Cerrar" })
             .addEventListener("click", () => this.close());
 
-        actions.createEl("button", { text: "Copiar al portapapeles", cls: "mod-cta" })
+        actions.createEl("button", { text: "Copiar todos", cls: "mod-cta" })
             .addEventListener("click", () => { void (async () => {
+                const text = `URL: ${this.supabaseUrl}\nClave: ${this.anonKey}\nVault ID: ${this.vaultId}`;
                 try {
-                    await navigator.clipboard.writeText(block);
+                    await navigator.clipboard.writeText(text);
                     new Notice("Copiado al portapapeles");
                 } catch {
                     new Notice("No se pudo copiar — seleccioná manualmente");

@@ -1,6 +1,5 @@
 import { App, Modal, Setting, Notice } from "obsidian";
 import { configure } from "./supabase/client";
-import { resolveInvitationCode, isShortCode } from "./supabase/invitations";
 
 export interface ConnectionResult {
     supabaseUrl: string;
@@ -25,13 +24,13 @@ export class ConnectionCodeModal extends Modal {
         contentEl.createEl("h3", { text: "Conectar con tu agrupación" });
 
         contentEl.createEl("p", {
-            text: "Pegá cada dato que te dio tu administrador.",
+            text: "Pegá los datos que te dio tu administrador.",
             cls: "setting-item-description",
         });
 
         let urlValue = "";
         let keyValue = "";
-        let codeValue = "";
+        let vaultValue = "";
 
         new Setting(contentEl)
             .setName("URL de Supabase")
@@ -50,15 +49,15 @@ export class ConnectionCodeModal extends Modal {
             });
 
         new Setting(contentEl)
-            .setName("Código de conexión")
+            .setName("Vault ID")
             .addText((text) => {
-                text.setPlaceholder("MA:v1:...");
+                text.setPlaceholder("UUID del vault");
                 text.inputEl.addClass("mi-agrupacion-full-width");
-                text.onChange((v) => { codeValue = v.trim(); });
+                text.onChange((v) => { vaultValue = v.trim(); });
                 text.inputEl.addEventListener("keydown", (e) => {
                     if (e.key === "Enter") {
                         e.preventDefault();
-                        void this.handleConnect(urlValue, keyValue, codeValue);
+                        void this.handleConnect(urlValue, keyValue, vaultValue);
                     }
                 });
             });
@@ -70,11 +69,11 @@ export class ConnectionCodeModal extends Modal {
 
         actions.createEl("button", { text: "Conectar", cls: "mod-cta" })
             .addEventListener("click", () => {
-                void this.handleConnect(urlValue, keyValue, codeValue);
+                void this.handleConnect(urlValue, keyValue, vaultValue);
             });
     }
 
-    private async handleConnect(url: string, key: string, code: string): Promise<void> {
+    private async handleConnect(url: string, key: string, vaultId: string): Promise<void> {
         if (!url) {
             new Notice("Pegá la URL de Supabase.");
             return;
@@ -91,22 +90,18 @@ export class ConnectionCodeModal extends Modal {
             new Notice("La clave debe empezar con eyJ");
             return;
         }
-        if (!code) {
-            new Notice("Pegá el código de conexión.");
-            return;
-        }
-        if (!isShortCode(code)) {
-            new Notice("Código inválido. Pedile un código nuevo a tu administrador.");
+        if (!vaultId) {
+            new Notice("Pegá el Vault ID.");
             return;
         }
 
-        const { result, error } = await resolveInvitationCode(url, key, code);
-        if (!result) {
-            new Notice(error || "No se pudo resolver el código.");
-            return;
-        }
-        configure(result.supabaseUrl, result.supabaseAnonKey);
-        this.onConnect(result);
+        configure(url, key);
+        this.onConnect({
+            supabaseUrl: url,
+            supabaseAnonKey: key,
+            vaultId: vaultId,
+            syncInterval: 2,
+        });
         this.close();
     }
 
