@@ -1,4 +1,4 @@
-import { requestUrl, type RequestUrlParam } from "obsidian";
+import { requestUrl } from "obsidian";
 
 export interface ResolvedInvitation {
     supabaseUrl: string;

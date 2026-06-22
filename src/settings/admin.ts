@@ -91,7 +91,7 @@ function renderSetupGuide(ctx: SettingsContext, containerEl: HTMLElement): void 
         new Setting(stepEl).setHeading().setName(step.title);
         stepEl.createEl("p", { text: step.text });
         if (step.link) {
-            const linkEl = stepEl.createEl("a", {
+            stepEl.createEl("a", {
                 text: step.linkText,
                 href: step.link,
                 cls: "mi-agrupacion-guide-link",
@@ -602,11 +602,15 @@ class CodeDisplayModal extends Modal {
             .addEventListener("click", () => this.close());
 
         actions.createEl("button", { text: "Copiar al portapapeles", cls: "mod-cta" })
-            .addEventListener("click", () => {
-                textArea.select();
-                const ok = activeDocument.execCommand("copy");
-                new Notice(ok ? "Código copiado" : "No se pudo copiar — seleccioná manualmente");
-            });
+            .addEventListener("click", () => { void (async () => {
+                try {
+                    await navigator.clipboard.writeText(this.code);
+                    new Notice("Código copiado");
+                } catch {
+                    textArea.select();
+                    new Notice("No se pudo copiar — seleccioná manualmente");
+                }
+            })(); });
     }
 
     onClose(): void {

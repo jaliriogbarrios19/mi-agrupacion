@@ -420,8 +420,8 @@
   resize: vertical;
 }
 
-.mi-agrupacion-sql-success {
-  border-color: var(--text-success) !important;
+.mi-agrupacion-sql-textarea.mi-agrupacion-sql-success {
+  border-color: var(--text-success);
 }
 
 .mi-agrupacion-code-textarea {
