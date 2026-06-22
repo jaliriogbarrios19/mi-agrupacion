@@ -299,6 +299,15 @@ function renderSupabaseConfig(ctx: SettingsContext, containerEl: HTMLElement): v
                     configure(ctx.settings.supabaseUrl, ctx.settings.supabaseAnonKey);
                     await ctx.saveFn();
                 })
+        )
+        .addButton((btn) =>
+            btn.setButtonText("Copiar").onClick(() => {
+                void navigator.clipboard.writeText(ctx.settings.supabaseUrl).then(() => {
+                    new Notice("URL copiada");
+                }).catch(() => {
+                    new Notice("No se pudo copiar");
+                });
+            })
         );
 
     new Setting(containerEl)
@@ -307,12 +316,22 @@ function renderSupabaseConfig(ctx: SettingsContext, containerEl: HTMLElement): v
         .addText((text) => {
             text.setValue(ctx.settings.supabaseAnonKey);
             text.inputEl.type = "password";
+            text.inputEl.addClass("mi-agrupacion-full-width");
             text.onChange(async (value) => {
                 ctx.settings.supabaseAnonKey = value.trim();
                 configure(ctx.settings.supabaseUrl, ctx.settings.supabaseAnonKey);
                 await ctx.saveFn();
             });
-        });
+        })
+        .addButton((btn) =>
+            btn.setButtonText("Copiar").onClick(() => {
+                void navigator.clipboard.writeText(ctx.settings.supabaseAnonKey).then(() => {
+                    new Notice("Clave copiada");
+                }).catch(() => {
+                    new Notice("No se pudo copiar");
+                });
+            })
+        );
 
     const dbSetupSection = containerEl.createDiv({ cls: "mi-agrupacion-db-setup" });
     new Setting(dbSetupSection).setHeading().setName("Configuración de la base de datos");
@@ -381,6 +400,15 @@ function renderSyncSettings(ctx: SettingsContext, containerEl: HTMLElement): voi
                     ctx.settings.vaultId = value.trim();
                     await ctx.saveFn();
                 })
+        )
+        .addButton((btn) =>
+            btn.setButtonText("Copiar").onClick(() => {
+                void navigator.clipboard.writeText(ctx.settings.vaultId).then(() => {
+                    new Notice("Vault ID copiado");
+                }).catch(() => {
+                    new Notice("No se pudo copiar");
+                });
+            })
         );
 
     if (!ctx.settings.vaultId) {
