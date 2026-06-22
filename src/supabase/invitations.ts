@@ -28,57 +28,58 @@ export async function generateInvitationCode(
 }
 
 export async function resolveInvitationCode(
+    supabaseUrl: string,
     code: string
-): Promise<ResolvedInvitation | null> {
-    const parsed = parseShortCode(code);
-    if (!parsed) return null;
+): Promise<{ result: ResolvedInvitation | null; error?: string }> {
+    const shortCode = extractShortCode(code);
+    if (!shortCode) return { result: null, error: "Formato de código inválido." };
     try {
-        const rows = await rpcCall(
-            parsed.supabaseUrl,
-            parsed.anonKey,
-            "resolve_invitation",
-            { p_code: parsed.code }
-        );
-        if (!Array.isArray(rows) || rows.length === 0) return null;
+        const rows = await rpcCall(supabaseUrl, "", "resolve_invitation", { p_code: shortCode });
+        if (!Array.isArray(rows) || rows.length === 0) {
+            return { result: null, error: "Código no encontrado o expirado. Pedile uno nuevo a tu administrador." };
+        }
         const row = rows[0] as {
             vault_id?: string;
             supabase_url?: string;
             anon_key?: string;
             sync_interval?: number;
         };
-        if (!row.vault_id) return null;
+        if (!row.vault_id || !row.anon_key) {
+            return { result: null, error: "Datos de invitación incompletos." };
+        }
         return {
-            supabaseUrl: parsed.supabaseUrl,
-            supabaseAnonKey: parsed.anonKey,
-            vaultId: row.vault_id,
-            syncInterval: typeof row.sync_interval === "number" ? row.sync_interval : 2,
+            result: {
+                supabaseUrl: row.supabase_url || supabaseUrl,
+                supabaseAnonKey: row.anon_key,
+                vaultId: row.vault_id,
+                syncInterval: typeof row.sync_interval === "number" ? row.sync_interval : 2,
+            },
         };
     } catch (e) {
+        const msg = String(e);
+        if (msg.includes("404") || msg.includes("does not exist")) {
+            return { result: null, error: "El administrador necesita ejecutar el SQL de actualización en Supabase." };
+        }
         console.warn("Mi Agrupacion — resolveInvitationCode error:", e);
-        return null;
+        return { result: null, error: "Error de conexión con Supabase." };
     }
 }
 
 export function isShortCode(code: string): boolean {
-    return code.startsWith("MA:v1:") && !code.includes("=") && code.split("/").length === 3;
+    const clean = sanitize(code);
+    return clean.startsWith("MA:v1:") && clean.length > 7;
 }
 
-function parseShortCode(code: string): { supabaseUrl: string; anonKey: string; code: string } | null {
-    try {
-        const raw = code.slice("MA:v1:".length);
-        const parts = raw.split("/");
-        if (parts.length !== 3) return null;
-        const [projectRef, keyB64, shortCode] = parts;
-        if (!projectRef || !keyB64 || !shortCode || shortCode.length !== 8) return null;
-        const anonKey = atob(keyB64.replace(/-/g, "+").replace(/_/g, "/"));
-        return {
-            supabaseUrl: `https://${projectRef}.supabase.co`,
-            anonKey,
-            code: shortCode.toUpperCase(),
-        };
-    } catch {
-        return null;
-    }
+function extractShortCode(code: string): string | null {
+    const clean = sanitize(code);
+    if (!clean.startsWith("MA:v1:")) return null;
+    const raw = clean.slice("MA:v1:".length).toUpperCase();
+    if (raw.length !== 8 || !/^[A-Z0-9]{8}$/.test(raw)) return null;
+    return raw;
+}
+
+function sanitize(code: string): string {
+    return code.replace(/[\s\u200B-\u200F\uFEFF]/g, "").trim();
 }
 
 async function rpcCall(
@@ -87,15 +88,17 @@ async function rpcCall(
     fn: string,
     params: Record<string, unknown>
 ): Promise<unknown> {
+    const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+    };
+    if (key) {
+        headers["apikey"] = key;
+        headers["Authorization"] = `Bearer ${key}`;
+    }
     const res = await requestUrl({
-        url: `${url}/rest/v1/rpc/${fn}`,
+        url: `${url.replace(/\/$/, "")}/rest/v1/rpc/${fn}`,
         method: "POST",
-        headers: {
-            "apikey": key,
-            "Authorization": `Bearer ${key}`,
-            "Content-Type": "application/json",
-            "Prefer": "return=representation",
-        },
+        headers,
         body: JSON.stringify(params),
     });
     return res.json;

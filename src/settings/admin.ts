@@ -545,11 +545,7 @@ function renderConnectionCode(ctx: SettingsContext, containerEl: HTMLElement): v
                     ctx.settings.syncInterval || 2
                 );
                 if (shortCode) {
-                    const projectRef = extractProjectRef(ctx.settings.supabaseUrl);
-                    const keyB64 = btoa(ctx.settings.supabaseAnonKey)
-                        .replace(/\+/g, "-").replace(/\//g, "_");
-                    const fullCode = `MA:v1:${projectRef}/${keyB64}/${shortCode}`;
-                    new CodeDisplayModal(ctx.app, fullCode).open();
+                    new CodeDisplayModal(ctx.app, ctx.settings.supabaseUrl, shortCode).open();
                 } else {
                     new Notice("Error: ejecutá el SQL de configuración actualizado en Supabase para crear la tabla invitations.");
                 }
@@ -557,10 +553,6 @@ function renderConnectionCode(ctx: SettingsContext, containerEl: HTMLElement): v
         );
 }
 
-function extractProjectRef(url: string): string {
-    const match = url.match(/https?:\/\/([^.]+)\.supabase\.co/);
-    return match ? match[1] : "";
-}
 
 function renderFooter(containerEl: HTMLElement): void {
     const linkSection = containerEl.createDiv("supsync-more-work");
@@ -571,11 +563,13 @@ function renderFooter(containerEl: HTMLElement): void {
 }
 
 class CodeDisplayModal extends Modal {
-    private code: string;
+    private supabaseUrl: string;
+    private shortCode: string;
 
-    constructor(app: App, code: string) {
+    constructor(app: App, supabaseUrl: string, shortCode: string) {
         super(app);
-        this.code = code;
+        this.supabaseUrl = supabaseUrl;
+        this.shortCode = `MA:v1:${shortCode}`;
     }
 
     onOpen(): void {
@@ -586,28 +580,25 @@ class CodeDisplayModal extends Modal {
         contentEl.createEl("h3", { text: "Código de conexión" });
 
         contentEl.createEl("p", {
-            text: "Copiá el código y compartilo con tu agrupación.",
+            text: "Compartí estos datos con los auxiliares de tu agrupación.",
             cls: "setting-item-description",
         });
 
-        const textArea = contentEl.createEl("textarea", {
-            cls: "mi-agrupacion-code-textarea",
-            text: this.code,
-        });
-        textArea.setAttr("readonly", "true");
+        new Setting(contentEl).setName("URL de Supabase").setDesc(this.supabaseUrl);
+        new Setting(contentEl).setName("Código").setDesc(this.shortCode);
 
         const actions = contentEl.createDiv({ cls: "mi-agrupacion-form-actions" });
 
         actions.createEl("button", { text: "Cerrar" })
             .addEventListener("click", () => this.close());
 
-        actions.createEl("button", { text: "Copiar al portapapeles", cls: "mod-cta" })
+        actions.createEl("button", { text: "Copiar ambos", cls: "mod-cta" })
             .addEventListener("click", () => { void (async () => {
+                const text = `URL: ${this.supabaseUrl}\nCódigo: ${this.shortCode}`;
                 try {
-                    await navigator.clipboard.writeText(this.code);
-                    new Notice("Código copiado");
+                    await navigator.clipboard.writeText(text);
+                    new Notice("Copiado al portapapeles");
                 } catch {
-                    textArea.select();
                     new Notice("No se pudo copiar — seleccioná manualmente");
                 }
             })(); });

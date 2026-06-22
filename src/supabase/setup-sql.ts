@@ -123,9 +123,11 @@ ALTER TABLE invitations ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "invitations_insert_auth" ON invitations;
 DROP POLICY IF EXISTS "invitations_select_auth" ON invitations;
+DROP POLICY IF EXISTS "invitations_select_anon" ON invitations;
 
 CREATE POLICY "invitations_insert_auth" ON invitations FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "invitations_select_auth" ON invitations FOR SELECT TO authenticated USING (true);
+CREATE POLICY "invitations_select_anon" ON invitations FOR SELECT TO anon USING (true);
 
 -- Generate invitation (SECURITY DEFINER — bypasses RLS)
 CREATE OR REPLACE FUNCTION generate_invitation(
@@ -175,9 +177,11 @@ ALTER TABLE invitations ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "invitations_insert_auth" ON invitations;
 DROP POLICY IF EXISTS "invitations_select_auth" ON invitations;
+DROP POLICY IF EXISTS "invitations_select_anon" ON invitations;
 
 CREATE POLICY "invitations_insert_auth" ON invitations FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "invitations_select_auth" ON invitations FOR SELECT TO authenticated USING (true);
+CREATE POLICY "invitations_select_anon" ON invitations FOR SELECT TO anon USING (true);
 
 CREATE OR REPLACE FUNCTION generate_invitation(
     p_vault_id UUID, p_url TEXT, p_key TEXT, p_interval INT DEFAULT 2

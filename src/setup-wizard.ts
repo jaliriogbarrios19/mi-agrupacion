@@ -25,11 +25,20 @@ export class ConnectionCodeModal extends Modal {
         contentEl.createEl("h3", { text: "Conectar con tu agrupación" });
 
         contentEl.createEl("p", {
-            text: "Pegá el código de conexión que te dio tu administrador.",
+            text: "Pegá la URL de Supabase y el código que te dio tu administrador.",
             cls: "setting-item-description",
         });
 
+        let urlValue = "";
         let codeValue = "";
+
+        new Setting(contentEl)
+            .setName("URL de Supabase")
+            .addText((text) => {
+                text.setPlaceholder("https://xxx.supabase.co");
+                text.inputEl.addClass("mi-agrupacion-full-width");
+                text.onChange((v) => { urlValue = v.trim(); });
+            });
 
         new Setting(contentEl)
             .setName("Código de conexión")
@@ -40,7 +49,7 @@ export class ConnectionCodeModal extends Modal {
                 text.inputEl.addEventListener("keydown", (e) => {
                     if (e.key === "Enter") {
                         e.preventDefault();
-                        void this.handleConnect(codeValue);
+                        void this.handleConnect(urlValue, codeValue);
                     }
                 });
             });
@@ -51,27 +60,34 @@ export class ConnectionCodeModal extends Modal {
             .addEventListener("click", () => this.close());
 
         actions.createEl("button", { text: "Conectar", cls: "mod-cta" })
-            .addEventListener("click", () => { void this.handleConnect(codeValue); });
+            .addEventListener("click", () => { void this.handleConnect(urlValue, codeValue); });
     }
 
-    private async handleConnect(code: string): Promise<void> {
-        if (!code) {
-            new Notice("Pegá el código de conexión");
+    private async handleConnect(url: string, code: string): Promise<void> {
+        if (!url) {
+            new Notice("Pegá la URL de Supabase.");
             return;
         }
-
+        if (!code) {
+            new Notice("Pegá el código de conexión.");
+            return;
+        }
+        if (!url.startsWith("https://")) {
+            new Notice("La URL debe empezar con https://");
+            return;
+        }
         if (!isShortCode(code)) {
             new Notice("Código inválido. Pedile un código nuevo a tu administrador.");
             return;
         }
 
-        const resolved = await resolveInvitationCode(code);
-        if (!resolved) {
-            new Notice("No se pudo resolver el código. Verificá que sea correcto.");
+        const { result, error } = await resolveInvitationCode(url, code);
+        if (!result) {
+            new Notice(error || "No se pudo resolver el código.");
             return;
         }
-        configure(resolved.supabaseUrl, resolved.supabaseAnonKey);
-        this.onConnect(resolved);
+        configure(result.supabaseUrl, result.supabaseAnonKey);
+        this.onConnect(result);
         this.close();
     }
 
