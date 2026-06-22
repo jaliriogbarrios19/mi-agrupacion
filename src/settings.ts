@@ -791,6 +791,13 @@ Usar el plugin
     private renderConnectionCode(containerEl: HTMLElement): void {
         new Setting(containerEl).setHeading().setName("Compartir conexión");
 
+        if (!this.settings.vaultId) {
+            new Setting(containerEl)
+                .setName("Código de conexión")
+                .setDesc("Generá un Vault ID primero en la sección de Sync antes de compartir.");
+            return;
+        }
+
         const code = encodeConnectionCode(
             this.settings.supabaseUrl,
             this.settings.supabaseAnonKey,

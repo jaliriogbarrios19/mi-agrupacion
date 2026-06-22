@@ -346,7 +346,9 @@ export function decodeConnectionCode(
 ): { supabaseUrl: string; supabaseAnonKey: string; vaultId: string; syncInterval: number } | null {
     try {
         if (!code.startsWith(CODE_PREFIX)) return null;
-        const base64 = code.slice(CODE_PREFIX.length);
+        // Strip whitespace + zero-width chars that iOS clipboard can inject
+        const base64 = code.slice(CODE_PREFIX.length).replace(/[\s\u200B-\u200F\uFEFF]/g, "");
+        if (!base64) return null;
         const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
         const payload = JSON.parse(new TextDecoder().decode(bytes)) as {
             u?: string;
