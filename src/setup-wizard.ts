@@ -1,5 +1,6 @@
 import { App, Modal, Setting, Notice } from "obsidian";
 import { decodeConnectionCode, configure } from "./supabase/client";
+import { resolveInvitationCode, isShortCode } from "./supabase/invitations";
 
 export interface ConnectionResult {
     supabaseUrl: string;
@@ -39,7 +40,7 @@ export class ConnectionCodeModal extends Modal {
                 text.inputEl.addEventListener("keydown", (e) => {
                     if (e.key === "Enter") {
                         e.preventDefault();
-                        this.handleConnect(codeValue);
+                        void this.handleConnect(codeValue);
                     }
                 });
             });
@@ -50,14 +51,29 @@ export class ConnectionCodeModal extends Modal {
             .addEventListener("click", () => this.close());
 
         actions.createEl("button", { text: "Conectar", cls: "mod-cta" })
-            .addEventListener("click", () => { this.handleConnect(codeValue); });
+            .addEventListener("click", () => { void this.handleConnect(codeValue); });
     }
 
-    private handleConnect(code: string): void {
+    private async handleConnect(code: string): Promise<void> {
         if (!code) {
             new Notice("Pegá el código de conexión");
             return;
         }
+
+        // Try short code first (MA:v1:<ref>/<key>/<8chars>)
+        if (isShortCode(code)) {
+            const resolved = await resolveInvitationCode(code);
+            if (resolved) {
+                configure(resolved.supabaseUrl, resolved.supabaseAnonKey);
+                this.onConnect(resolved);
+                this.close();
+                return;
+            }
+            new Notice("No se pudo resolver el código corto. Verificá que sea correcto.");
+            return;
+        }
+
+        // Try legacy long code (MA:v1:<base64>)
         const result = decodeConnectionCode(code);
         if (!result) {
             new Notice("Código inválido. Pedile un código nuevo a tu administrador.");

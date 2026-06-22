@@ -76,6 +76,7 @@ export interface MiAgrupacionSettings {
     vaultId: string;
     lastSeenVersion: string;
     setupMode: "admin" | "auxiliar" | "";
+    sqlMigrationV7Done: boolean;
 }
 
 export const DEFAULT_SECTORES = ["General"];
@@ -93,6 +94,7 @@ export const DEFAULT_SETTINGS: MiAgrupacionSettings = {
     vaultId: "",
     lastSeenVersion: "",
     setupMode: "",
+    sqlMigrationV7Done: false,
 };
 
 export const CICLOS = [

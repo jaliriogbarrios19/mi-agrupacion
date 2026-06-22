@@ -107,7 +107,51 @@ BEGIN
     ) THEN
         ALTER TABLE vaults ADD COLUMN sectores TEXT DEFAULT '[]';
     END IF;
-END $$;`;
+END $$;
+
+-- Invitations (short connection codes)
+CREATE TABLE IF NOT EXISTS invitations (
+    code TEXT PRIMARY KEY,
+    vault_id UUID NOT NULL,
+    supabase_url TEXT NOT NULL,
+    anon_key TEXT NOT NULL,
+    sync_interval INT DEFAULT 2,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE invitations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "invitations_insert_auth" ON invitations;
+DROP POLICY IF EXISTS "invitations_select_auth" ON invitations;
+
+CREATE POLICY "invitations_insert_auth" ON invitations FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "invitations_select_auth" ON invitations FOR SELECT TO authenticated USING (true);
+
+-- Generate invitation (SECURITY DEFINER — bypasses RLS)
+CREATE OR REPLACE FUNCTION generate_invitation(
+    p_vault_id UUID, p_url TEXT, p_key TEXT, p_interval INT DEFAULT 2
+) RETURNS TEXT AS $$
+DECLARE
+    v_code TEXT;
+BEGIN
+    v_code := upper(substring(replace(gen_random_uuid()::text, '-', ''), 1, 8));
+    INSERT INTO invitations (code, vault_id, supabase_url, anon_key, sync_interval)
+    VALUES (v_code, p_vault_id, p_url, p_key, p_interval);
+    RETURN v_code;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Resolve invitation (callable by anon via SECURITY DEFINER)
+CREATE OR REPLACE FUNCTION resolve_invitation(p_code TEXT)
+RETURNS TABLE(vault_id UUID, supabase_url TEXT, anon_key TEXT, sync_interval INT) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT i.vault_id, i.supabase_url, i.anon_key, i.sync_interval
+    FROM invitations i
+    WHERE i.code = upper(p_code)
+    AND i.created_at > now() - interval '7 days';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;`;
 
 export function getSqlEditorUrl(supabaseUrl: string): string {
     const match = supabaseUrl.match(/https?:\/\/([^.]+)\.supabase\.co/);
@@ -116,3 +160,45 @@ export function getSqlEditorUrl(supabaseUrl: string): string {
     }
     return "https://supabase.com/dashboard";
 }
+
+export const MIGRATION_V7_SQL = `-- Mi Agrupacion v0.7.0 — Invitations table
+CREATE TABLE IF NOT EXISTS invitations (
+    code TEXT PRIMARY KEY,
+    vault_id UUID NOT NULL,
+    supabase_url TEXT NOT NULL,
+    anon_key TEXT NOT NULL,
+    sync_interval INT DEFAULT 2,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE invitations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "invitations_insert_auth" ON invitations;
+DROP POLICY IF EXISTS "invitations_select_auth" ON invitations;
+
+CREATE POLICY "invitations_insert_auth" ON invitations FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "invitations_select_auth" ON invitations FOR SELECT TO authenticated USING (true);
+
+CREATE OR REPLACE FUNCTION generate_invitation(
+    p_vault_id UUID, p_url TEXT, p_key TEXT, p_interval INT DEFAULT 2
+) RETURNS TEXT AS $$
+DECLARE
+    v_code TEXT;
+BEGIN
+    v_code := upper(substring(replace(gen_random_uuid()::text, '-', ''), 1, 8));
+    INSERT INTO invitations (code, vault_id, supabase_url, anon_key, sync_interval)
+    VALUES (v_code, p_vault_id, p_url, p_key, p_interval);
+    RETURN v_code;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION resolve_invitation(p_code TEXT)
+RETURNS TABLE(vault_id UUID, supabase_url TEXT, anon_key TEXT, sync_interval INT) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT i.vault_id, i.supabase_url, i.anon_key, i.sync_interval
+    FROM invitations i
+    WHERE i.code = upper(p_code)
+    AND i.created_at > now() - interval '7 days';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;`;
