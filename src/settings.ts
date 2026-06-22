@@ -1,4 +1,4 @@
-import { PluginSettingTab, Setting, Notice, type App } from "obsidian";
+import { PluginSettingTab, Setting, Notice, Modal, type App } from "obsidian";
 import type { MiAgrupacionSettings } from "./types";
 
 import type MiAgrupacionPlugin from "./main";
@@ -809,12 +809,8 @@ Usar el plugin
             .setName("Código de conexión")
             .setDesc("Compartí este código con los auxiliares de tu agrupación")
             .addButton((btn) =>
-                btn.setButtonText("Copiar código").setCta().onClick(() => {
-                    void navigator.clipboard.writeText(code).then(() => {
-                        new Notice("Código copiado al portapapeles");
-                    }).catch(() => {
-                        new Notice("No se pudo copiar");
-                    });
+                btn.setButtonText("Ver código").setCta().onClick(() => {
+                    new CodeDisplayModal(this.app, code).open();
                 })
             );
     }
@@ -825,5 +821,58 @@ Usar el plugin
             text: "Si quieres conocer más de nuestro trabajo y de otros plugins ingresa a spob.fly.dev",
             href: "https://spob.fly.dev",
         });
+    }
+}
+
+class CodeDisplayModal extends Modal {
+    private code: string;
+
+    constructor(app: App, code: string) {
+        super(app);
+        this.code = code;
+    }
+
+    onOpen(): void {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.addClass("mi-agrupacion-modal");
+
+        contentEl.createEl("h3", { text: "Código de conexión" });
+
+        contentEl.createEl("p", {
+            text: "Copiá el código y compartilo con tu agrupación.",
+            cls: "setting-item-description",
+        });
+
+        const textArea = contentEl.createEl("textarea", {
+            cls: "mi-agrupacion-code-textarea",
+            text: this.code,
+        });
+        textArea.setAttr("readonly", "true");
+        textArea.setCssStyles({
+            width: "100%",
+            minHeight: "80px",
+            fontFamily: "var(--font-monospace)",
+            fontSize: "0.85em",
+            padding: "8px",
+            resize: "vertical",
+            wordBreak: "break-all",
+        });
+
+        const actions = contentEl.createDiv({ cls: "mi-agrupacion-form-actions" });
+
+        actions.createEl("button", { text: "Cerrar" })
+            .addEventListener("click", () => this.close());
+
+        actions.createEl("button", { text: "Copiar al portapapeles", cls: "mod-cta" })
+            .addEventListener("click", () => {
+                textArea.select();
+                const ok = document.execCommand("copy");
+                new Notice(ok ? "Código copiado" : "No se pudo copiar — seleccioná manualmente");
+            });
+    }
+
+    onClose(): void {
+        this.contentEl.empty();
     }
 }
