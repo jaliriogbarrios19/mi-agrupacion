@@ -29,12 +29,13 @@ export async function generateInvitationCode(
 
 export async function resolveInvitationCode(
     supabaseUrl: string,
+    anonKey: string,
     code: string
 ): Promise<{ result: ResolvedInvitation | null; error?: string }> {
     const shortCode = extractShortCode(code);
     if (!shortCode) return { result: null, error: "Formato de código inválido." };
     try {
-        const rows = await rpcCall(supabaseUrl, "", "resolve_invitation", { p_code: shortCode });
+        const rows = await rpcCall(supabaseUrl, anonKey, "resolve_invitation", { p_code: shortCode });
         if (!Array.isArray(rows) || rows.length === 0) {
             return { result: null, error: "Código no encontrado o expirado. Pedile uno nuevo a tu administrador." };
         }
@@ -95,8 +96,9 @@ async function rpcCall(
         headers["apikey"] = key;
         headers["Authorization"] = `Bearer ${key}`;
     }
+    const fullUrl = `${url.replace(/\/$/, "")}/rest/v1/rpc/${fn}`;
     const res = await requestUrl({
-        url: `${url.replace(/\/$/, "")}/rest/v1/rpc/${fn}`,
+        url: fullUrl,
         method: "POST",
         headers,
         body: JSON.stringify(params),

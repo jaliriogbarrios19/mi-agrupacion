@@ -545,7 +545,7 @@ function renderConnectionCode(ctx: SettingsContext, containerEl: HTMLElement): v
                     ctx.settings.syncInterval || 2
                 );
                 if (shortCode) {
-                    new CodeDisplayModal(ctx.app, ctx.settings.supabaseUrl, shortCode).open();
+                    new CodeDisplayModal(ctx.app, ctx.settings.supabaseUrl, ctx.settings.supabaseAnonKey, shortCode).open();
                 } else {
                     new Notice("Error: ejecutá el SQL de configuración actualizado en Supabase para crear la tabla invitations.");
                 }
@@ -564,11 +564,13 @@ function renderFooter(containerEl: HTMLElement): void {
 
 class CodeDisplayModal extends Modal {
     private supabaseUrl: string;
+    private anonKey: string;
     private shortCode: string;
 
-    constructor(app: App, supabaseUrl: string, shortCode: string) {
+    constructor(app: App, supabaseUrl: string, anonKey: string, shortCode: string) {
         super(app);
         this.supabaseUrl = supabaseUrl;
+        this.anonKey = anonKey;
         this.shortCode = `MA:v1:${shortCode}`;
     }
 
@@ -580,23 +582,27 @@ class CodeDisplayModal extends Modal {
         contentEl.createEl("h3", { text: "Código de conexión" });
 
         contentEl.createEl("p", {
-            text: "Compartí estos datos con los auxiliares de tu agrupación.",
+            text: "Copiá este bloque y compartilo con los auxiliares de tu agrupación.",
             cls: "setting-item-description",
         });
 
-        new Setting(contentEl).setName("URL de Supabase").setDesc(this.supabaseUrl);
-        new Setting(contentEl).setName("Código").setDesc(this.shortCode);
+        const block = `URL: ${this.supabaseUrl}\nClave: ${this.anonKey}\nCódigo: ${this.shortCode}`;
+
+        const textArea = contentEl.createEl("textarea", {
+            cls: "mi-agrupacion-code-textarea",
+            text: block,
+        });
+        textArea.setAttr("readonly", "true");
 
         const actions = contentEl.createDiv({ cls: "mi-agrupacion-form-actions" });
 
         actions.createEl("button", { text: "Cerrar" })
             .addEventListener("click", () => this.close());
 
-        actions.createEl("button", { text: "Copiar ambos", cls: "mod-cta" })
+        actions.createEl("button", { text: "Copiar al portapapeles", cls: "mod-cta" })
             .addEventListener("click", () => { void (async () => {
-                const text = `URL: ${this.supabaseUrl}\nCódigo: ${this.shortCode}`;
                 try {
-                    await navigator.clipboard.writeText(text);
+                    await navigator.clipboard.writeText(block);
                     new Notice("Copiado al portapapeles");
                 } catch {
                     new Notice("No se pudo copiar — seleccioná manualmente");
