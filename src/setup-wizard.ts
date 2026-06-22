@@ -25,19 +25,42 @@ export class ConnectionCodeModal extends Modal {
         contentEl.createEl("h3", { text: "Conectar con tu agrupación" });
 
         contentEl.createEl("p", {
-            text: "Pegá el código de conexión que te dio tu administrador.",
+            text: "Pegá cada dato que te dio tu administrador.",
             cls: "setting-item-description",
         });
 
+        let urlValue = "";
+        let keyValue = "";
         let codeValue = "";
 
         new Setting(contentEl)
-            .setName("Código de conexión")
-            .addTextArea((text) => {
-                text.setPlaceholder("URL: https://xxx.supabase.co\nClave: eyJ...\nCódigo: MA:v1:...");
+            .setName("URL de Supabase")
+            .addText((text) => {
+                text.setPlaceholder("https://xxx.supabase.co");
                 text.inputEl.addClass("mi-agrupacion-full-width");
-                text.inputEl.rows = 4;
+                text.onChange((v) => { urlValue = v.trim(); });
+            });
+
+        new Setting(contentEl)
+            .setName("Clave anónima")
+            .addText((text) => {
+                text.setPlaceholder("eyJ...");
+                text.inputEl.addClass("mi-agrupacion-full-width");
+                text.onChange((v) => { keyValue = v.trim(); });
+            });
+
+        new Setting(contentEl)
+            .setName("Código de conexión")
+            .addText((text) => {
+                text.setPlaceholder("MA:v1:...");
+                text.inputEl.addClass("mi-agrupacion-full-width");
                 text.onChange((v) => { codeValue = v.trim(); });
+                text.inputEl.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        void this.handleConnect(urlValue, keyValue, codeValue);
+                    }
+                });
             });
 
         const actions = contentEl.createDiv({ cls: "mi-agrupacion-form-actions" });
@@ -46,26 +69,38 @@ export class ConnectionCodeModal extends Modal {
             .addEventListener("click", () => this.close());
 
         actions.createEl("button", { text: "Conectar", cls: "mod-cta" })
-            .addEventListener("click", () => { void this.handleConnect(codeValue); });
+            .addEventListener("click", () => {
+                void this.handleConnect(urlValue, keyValue, codeValue);
+            });
     }
 
-    private async handleConnect(raw: string): Promise<void> {
-        if (!raw) {
+    private async handleConnect(url: string, key: string, code: string): Promise<void> {
+        if (!url) {
+            new Notice("Pegá la URL de Supabase.");
+            return;
+        }
+        if (!url.startsWith("https://")) {
+            new Notice("La URL debe empezar con https://");
+            return;
+        }
+        if (!key) {
+            new Notice("Pegá la clave anónima.");
+            return;
+        }
+        if (!key.startsWith("eyJ")) {
+            new Notice("La clave debe empezar con eyJ");
+            return;
+        }
+        if (!code) {
             new Notice("Pegá el código de conexión.");
             return;
         }
-
-        const parsed = parseConnectionBlock(raw);
-        if (!parsed) {
-            new Notice("No se pudo leer el código. Verificá que tenga URL, Clave y Código.");
+        if (!isShortCode(code)) {
+            new Notice("Código inválido. Pedile un código nuevo a tu administrador.");
             return;
         }
 
-        const { result, error } = await resolveInvitationCode(
-            parsed.url,
-            parsed.key,
-            parsed.code
-        );
+        const { result, error } = await resolveInvitationCode(url, key, code);
         if (!result) {
             new Notice(error || "No se pudo resolver el código.");
             return;
@@ -78,17 +113,4 @@ export class ConnectionCodeModal extends Modal {
     onClose(): void {
         this.contentEl.empty();
     }
-}
-
-function parseConnectionBlock(raw: string): { url: string; key: string; code: string } | null {
-    const clean = raw.replace(/[\s\u200B-\u200F\uFEFF]/g, " ").trim();
-    const urlMatch = clean.match(/https?:\/\/[^\s]+\.supabase\.co/);
-    const keyMatch = clean.match(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9._-]+/);
-    const codeMatch = clean.match(/MA:v1:[A-Za-z0-9]+/i);
-    if (!urlMatch || !keyMatch || !codeMatch) return null;
-    return {
-        url: urlMatch[0].replace(/\/$/, ""),
-        key: keyMatch[0],
-        code: codeMatch[0],
-    };
 }
